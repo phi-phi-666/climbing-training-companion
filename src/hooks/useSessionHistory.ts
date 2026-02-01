@@ -1,0 +1,87 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db, type Session, type Exercise } from '../services/db'
+
+export function useSessionHistory(days: number = 7) {
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - days)
+  const cutoffDateStr = cutoffDate.toISOString().split('T')[0]
+
+  const sessions = useLiveQuery(
+    () =>
+      db.sessions
+        .where('date')
+        .aboveOrEqual(cutoffDateStr)
+        .reverse()
+        .sortBy('date'),
+    [cutoffDateStr]
+  )
+
+  return sessions ?? []
+}
+
+export function useRecentSessions(limit: number = 10) {
+  const sessions = useLiveQuery(() =>
+    db.sessions.orderBy('createdAt').reverse().limit(limit).toArray()
+  )
+
+  return sessions ?? []
+}
+
+export function useLastSessionByType(type: Session['type']) {
+  const session = useLiveQuery(
+    () =>
+      db.sessions
+        .where('type')
+        .equals(type)
+        .reverse()
+        .sortBy('createdAt')
+        .then((sessions) => sessions[0] ?? null),
+    [type]
+  )
+
+  return session
+}
+
+export function useDaysSinceLastSession(type: Session['type']): number | null {
+  const lastSession = useLastSessionByType(type)
+
+  if (lastSession === undefined) return null
+  if (lastSession === null) return null
+
+  const lastDate = new Date(lastSession.date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  lastDate.setHours(0, 0, 0, 0)
+
+  const diffTime = today.getTime() - lastDate.getTime()
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+  return diffDays
+}
+
+export async function addSession(
+  session: Omit<Session, 'id' | 'createdAt'>
+): Promise<number> {
+  const id = await db.sessions.add({
+    ...session,
+    createdAt: Date.now()
+  })
+  return id as number
+}
+
+export async function updateSession(
+  id: number,
+  updates: Partial<Omit<Session, 'id' | 'createdAt'>>
+): Promise<number> {
+  return db.sessions.update(id, updates)
+}
+
+export async function deleteSession(id: number): Promise<void> {
+  return db.sessions.delete(id)
+}
+
+export async function getSessionById(id: number): Promise<Session | undefined> {
+  return db.sessions.get(id)
+}
+
+export type { Session, Exercise }

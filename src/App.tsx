@@ -1,0 +1,73 @@
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import Dashboard from './components/Dashboard'
+import LogSession from './components/LogSession'
+import History from './components/History'
+import LogMeal from './components/LogMeal'
+
+function App() {
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-gray-900 text-gray-100 pb-20">
+        <main className="max-w-lg mx-auto p-4">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/log" element={<LogSession />} />
+            <Route path="/meal" element={<LogMeal />} />
+            <Route path="/history" element={<History />} />
+          </Routes>
+        </main>
+
+        <nav className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700">
+          <div className="max-w-lg mx-auto flex justify-around">
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                `flex flex-col items-center py-3 px-4 text-sm ${
+                  isActive ? 'text-indigo-400' : 'text-gray-400'
+                }`
+              }
+            >
+              <span className="text-xl mb-1">🏠</span>
+              <span>Home</span>
+            </NavLink>
+            <NavLink
+              to="/log"
+              className={({ isActive }) =>
+                `flex flex-col items-center py-3 px-4 text-sm ${
+                  isActive ? 'text-indigo-400' : 'text-gray-400'
+                }`
+              }
+            >
+              <span className="text-xl mb-1">➕</span>
+              <span>Log</span>
+            </NavLink>
+            <NavLink
+              to="/meal"
+              className={({ isActive }) =>
+                `flex flex-col items-center py-3 px-4 text-sm ${
+                  isActive ? 'text-indigo-400' : 'text-gray-400'
+                }`
+              }
+            >
+              <span className="text-xl mb-1">🍽️</span>
+              <span>Meal</span>
+            </NavLink>
+            <NavLink
+              to="/history"
+              className={({ isActive }) =>
+                `flex flex-col items-center py-3 px-4 text-sm ${
+                  isActive ? 'text-indigo-400' : 'text-gray-400'
+                }`
+              }
+            >
+              <span className="text-xl mb-1">📅</span>
+              <span>History</span>
+            </NavLink>
+          </div>
+        </nav>
+      </div>
+    </BrowserRouter>
+  )
+}
+
+export default App
