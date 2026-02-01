@@ -218,14 +218,37 @@ Return as JSON with this exact structure:
 IMPORTANT: No markdown in any text fields. Plain text only.`
 }
 
+function stripMarkdownCodeBlock(text: string): string {
+  let cleaned = text.trim()
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.slice(7)
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.slice(3)
+  }
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.slice(0, -3)
+  }
+  return cleaned.trim()
+}
+
 export async function generateTodayOptions(
   context: AIContext,
   daysSince: DaysSinceByType
 ): Promise<TodayOption[]> {
   const prompt = buildTodayOptionsPrompt(context, daysSince)
   const response = await callOpenRouter(prompt, { json: true })
-  const parsed = JSON.parse(response)
-  return parsed.options as TodayOption[]
+  const cleanedResponse = stripMarkdownCodeBlock(response)
+
+  try {
+    const parsed = JSON.parse(cleanedResponse)
+    if (!parsed.options || !Array.isArray(parsed.options)) {
+      throw new Error('Invalid response structure: missing options array')
+    }
+    return parsed.options as TodayOption[]
+  } catch (parseError) {
+    console.error('Failed to parse response:', parseError, 'Response was:', response)
+    throw new Error(`Failed to parse AI response: ${parseError}`)
+  }
 }
 
 function buildProteinPrompt(context: AIContext): string {

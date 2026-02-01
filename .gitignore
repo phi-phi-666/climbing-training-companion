@@ -31,3 +31,5 @@ npm-debug.log*
 # Local scripts
 install.ps1
 build.ps1
+
+.vercel

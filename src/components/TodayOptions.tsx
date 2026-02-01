@@ -28,9 +28,16 @@ export default function TodayOptions({ daysSince }: TodayOptionsProps) {
 
     try {
       const context = buildAIContext(lastSessions, todayNutrition)
+      console.log('Generating options with context:', context, 'daysSince:', daysSince)
       const result = await generateTodayOptions(context, daysSince)
-      setOptions(result)
+      console.log('Generated options:', result)
+      if (!result || result.length === 0) {
+        setError('No options returned from AI')
+      } else {
+        setOptions(result)
+      }
     } catch (err) {
+      console.error('Error generating options:', err)
       setError(err instanceof Error ? err.message : 'Failed to generate options')
     } finally {
       setLoading(false)

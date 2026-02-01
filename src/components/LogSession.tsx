@@ -12,8 +12,33 @@ import Modal from './ui/Modal'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
 
+function getDateOptions(): { value: string; label: string }[] {
+  const options = []
+  const today = new Date()
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    const value = date.toISOString().split('T')[0]
+
+    let label: string
+    if (i === 0) {
+      label = 'Today'
+    } else if (i === 1) {
+      label = 'Yesterday'
+    } else {
+      label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    }
+
+    options.push({ value, label })
+  }
+
+  return options
+}
+
 export default function LogSession() {
   const navigate = useNavigate()
+  const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0])
   const [sessionType, setSessionType] = useState<SessionType>('boulder')
   const [selectedGroups, setSelectedGroups] = useState<MuscleGroup[]>([])
   const [selectedExercises, setSelectedExercises] = useState<string[]>([])
@@ -24,6 +49,8 @@ export default function LogSession() {
   const [saving, setSaving] = useState(false)
   const [showWarmup, setShowWarmup] = useState(false)
   const [showCooldown, setShowCooldown] = useState(false)
+
+  const dateOptions = getDateOptions()
 
   const toggleGroup = (group: MuscleGroup) => {
     setSelectedGroups((prev) =>
@@ -54,7 +81,7 @@ export default function LogSession() {
     })
 
     await addSession({
-      date: new Date().toISOString().split('T')[0],
+      date: sessionDate,
       type: sessionType,
       exercises,
       durationMinutes: duration,
@@ -71,6 +98,25 @@ export default function LogSession() {
       <header className="py-4">
         <h1 className="text-2xl font-bold">Log Session</h1>
       </header>
+
+      <section className="card">
+        <h2 className="text-lg font-semibold mb-3">Date</h2>
+        <div className="flex flex-wrap gap-2">
+          {dateOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setSessionDate(option.value)}
+              className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                sessionDate === option.value
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="card">
         <h2 className="text-lg font-semibold mb-3">Session Type</h2>
