@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Climbing Training Companion',
-        short_name: 'ClimbTrack',
+        name: 'Climbing Companion',
+        short_name: 'Climbing',
         description: 'Track climbing training, workouts, and nutrition',
         theme_color: '#1f2937',
         background_color: '#111827',
@@ -26,6 +26,12 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }
