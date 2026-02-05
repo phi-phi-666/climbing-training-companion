@@ -169,6 +169,12 @@ export default function LogSession() {
     }
   }, [prefill])
 
+  // Clear warmup and cooldown when session type or boulder sub-type changes
+  useEffect(() => {
+    setWarmup(null)
+    setCooldown(null)
+  }, [sessionType, boulderSubType])
+
   const dateOptions = getDateOptions()
   const isCrossfit = sessionType === 'crossfit'
   const exerciseMap = isCrossfit ? crossfitExercisesByGroup : exercisesByGroup
@@ -557,6 +563,7 @@ export default function LogSession() {
         title="AI Warmup Generator"
       >
         <WarmupGenerator
+          key={`warmup-${sessionType}-${boulderSubType || 'none'}`}
           sessionType={sessionType}
           boulderSubType={sessionType === 'boulder' ? boulderSubType : undefined}
           onClose={() => setShowWarmup(false)}
@@ -571,7 +578,9 @@ export default function LogSession() {
         title="AI Cooldown Generator"
       >
         <CooldownGenerator
+          key={`cooldown-${sessionType}-${boulderSubType || 'none'}`}
           sessionType={sessionType}
+          boulderSubType={sessionType === 'boulder' ? boulderSubType : undefined}
           onClose={() => setShowCooldown(false)}
           onCooldownGenerated={setCooldown}
           savedCooldown={cooldown}

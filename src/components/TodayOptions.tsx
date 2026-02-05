@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   generateTodayOptions,
@@ -39,14 +39,49 @@ interface TodayOptionsProps {
   hasSessionToday: boolean
 }
 
+const STORAGE_KEY = 'alpha_selected_option'
+
 export default function TodayOptions({ daysSince, hasSessionToday }: TodayOptionsProps) {
   const navigate = useNavigate()
   const [options, setOptions] = useState<TodayOption[] | null>(null)
-  const [selectedOption, setSelectedOption] = useState<TodayOption | null>(null)
+  const [selectedOption, setSelectedOption] = useState<TodayOption | null>(() => {
+    // Restore from localStorage on mount
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        // Check if stored option is from today
+        const storedDate = parsed._storedDate
+        const today = new Date().toISOString().split('T')[0]
+        if (storedDate === today) {
+          delete parsed._storedDate
+          return parsed
+        }
+        // Clear stale options from previous days
+        localStorage.removeItem(STORAGE_KEY)
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+    return null
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const lastSessions = useSessionHistory(7)
+
+  // Persist selectedOption to localStorage
+  useEffect(() => {
+    if (selectedOption) {
+      const toStore = {
+        ...selectedOption,
+        _storedDate: new Date().toISOString().split('T')[0]
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore))
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  }, [selectedOption])
 
   const handleGenerate = async () => {
     setLoading(true)
@@ -80,7 +115,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   const effortLabels: Record<string, string> = {
     high: 'High Effort',
     medium: 'Medium Effort',
-    low: 'Recovery'
+    low: 'Low Effort'
   }
 
   const handleSelectOption = (option: TodayOption) => {

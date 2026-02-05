@@ -185,7 +185,7 @@ export const cardioSubTypes = [
 
 export type CardioSubType = (typeof cardioSubTypes)[number]['value']
 
-// Mobility exercises
+// Mobility exercises (active movement-based - foam rolling and lacrosse ball are in Recovery)
 export const mobilityExercises = [
   'Hip 90/90',
   'Shoulder stretches',
@@ -197,8 +197,6 @@ export const mobilityExercises = [
   'World\'s greatest stretch',
   'Couch stretch',
   'Banded hip flexor stretch',
-  'Foam rolling',
-  'Lacrosse ball work',
   'Ankle mobility',
   'Deep squat hold',
   'Wall slides',
@@ -229,13 +227,14 @@ export const hangboardExercises = [
 
 // Recovery activities (separate from training sessions)
 export const recoveryTypes = [
-  { value: 'foam_roll', label: 'Foam Rolling' },
+  { value: 'foam_roll', label: 'Foam rolling' },
+  { value: 'lacrosse_ball', label: 'Lacrosse ball work' },
   { value: 'yoga', label: 'Yoga' },
   { value: 'sauna', label: 'Sauna' },
-  { value: 'cold_plunge', label: 'Cold Plunge' },
+  { value: 'cold_plunge', label: 'Cold plunge' },
   { value: 'massage', label: 'Massage' },
-  { value: 'breathing', label: 'Breathing Work' },
-  { value: 'sleep', label: 'Extra Sleep' }
+  { value: 'breathing', label: 'Breathing work' },
+  { value: 'sleep', label: 'Extra sleep' }
 ] as const
 
 export type RecoveryType = (typeof recoveryTypes)[number]['value']

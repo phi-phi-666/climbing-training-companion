@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { generateCooldown, buildAIContext } from '../services/ai'
 import { useSessionHistory } from '../hooks/useSessionHistory'
-import { sessionTypes } from '../data/exercises'
+import { sessionTypes, boulderSubTypes } from '../data/exercises'
 import type { Session } from '../services/db'
+import type { BoulderSubType } from '../data/exercises'
 
 interface CooldownGeneratorProps {
   sessionType: Session['type']
+  boulderSubType?: BoulderSubType
   onClose: () => void
   onCooldownGenerated?: (cooldown: string) => void
   savedCooldown?: string | null
@@ -15,6 +17,7 @@ interface CooldownGeneratorProps {
 
 export default function CooldownGenerator({
   sessionType,
+  boulderSubType,
   onClose,
   onCooldownGenerated,
   savedCooldown,
@@ -39,7 +42,7 @@ export default function CooldownGenerator({
 
     try {
       const context = buildAIContext(lastSessions, null)
-      const result = await generateCooldown(sessionType, context, muscleGroups, exercises)
+      const result = await generateCooldown(sessionType, context, muscleGroups, exercises, boulderSubType)
       setCooldown(result)
       onCooldownGenerated?.(result)
     } catch (err) {
@@ -51,6 +54,10 @@ export default function CooldownGenerator({
 
   const getSessionLabel = () => {
     const type = sessionTypes.find(t => t.value === sessionType)
+    if (sessionType === 'boulder' && boulderSubType) {
+      const subType = boulderSubTypes.find(t => t.value === boulderSubType)
+      return `${type?.label} - ${subType?.label}`
+    }
     return type?.label || sessionType
   }
 

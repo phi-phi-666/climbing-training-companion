@@ -251,7 +251,8 @@ function buildCooldownPrompt(
   sessionType: string,
   context: AIContext,
   muscleGroups?: string[],
-  exercises?: string[]
+  exercises?: string[],
+  boulderSubType?: string
 ): string {
   const muscleGroupsText = muscleGroups && muscleGroups.length > 0
     ? `\nMuscle groups worked this session: ${muscleGroups.join(', ')}`
@@ -261,8 +262,29 @@ function buildCooldownPrompt(
     ? `\nExercises performed: ${exercises.join(', ')}`
     : ''
 
-  return `Generate a cooldown/stretching routine after a ${sessionType} session.
-${muscleGroupsText}${exercisesText}
+  const subTypeText = boulderSubType ? ` (${boulderSubType})` : ''
+
+  // Session-specific guidance for cooldown
+  let sessionGuidance = ''
+  if (sessionType === 'boulder' && boulderSubType) {
+    switch (boulderSubType) {
+      case 'campus':
+        sessionGuidance = '\nThis was a CAMPUS BOARD session - very finger-intensive. Prioritize extensive finger/forearm stretches and shoulder recovery.'
+        break
+      case 'circuits':
+        sessionGuidance = '\nThis was a CIRCUITS session - endurance focused with high volume. Focus on full body recovery and light cardio cooldown.'
+        break
+      case 'problems':
+        sessionGuidance = '\nThis was a PROBLEMS session - power and technique focused. Include hip and shoulder mobility, plus finger care.'
+        break
+      case 'intervals':
+        sessionGuidance = '\nThis was an INTERVALS session - mixed intensity climbing. Balance between power recovery and endurance work.'
+        break
+    }
+  }
+
+  return `Generate a cooldown/stretching routine after a ${sessionType}${subTypeText} session.
+${muscleGroupsText}${exercisesText}${sessionGuidance}
 
 Recent activity (last 7 days):
 ${formatRecentSessions(context.lastSessions)}
@@ -289,9 +311,10 @@ export async function generateCooldown(
   sessionType: Session['type'],
   context: AIContext,
   muscleGroups?: string[],
-  exercises?: string[]
+  exercises?: string[],
+  boulderSubType?: string
 ): Promise<string> {
-  const prompt = buildCooldownPrompt(sessionType, context, muscleGroups, exercises)
+  const prompt = buildCooldownPrompt(sessionType, context, muscleGroups, exercises, boulderSubType)
   return callOpenRouter(prompt)
 }
 
