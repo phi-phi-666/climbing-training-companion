@@ -34,23 +34,23 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
       <div
         ref={modalRef}
-        className="bg-gray-800 w-full max-w-lg max-h-[85vh] rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col animate-slide-up"
+        className="bg-stone-900 w-full max-w-lg max-h-[85vh] rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col animate-slide-up border border-stone-800"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-5 border-b border-stone-800">
           <h2 id="modal-title" className="text-lg font-semibold">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 hover:bg-stone-800 rounded-xl transition-colors text-stone-400 hover:text-stone-200"
             aria-label="Close modal"
           >
             <svg
@@ -69,7 +69,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
             </svg>
           </button>
         </div>
-        <div className="p-4 overflow-y-auto flex-1">{children}</div>
+        <div className="p-5 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   )

@@ -44,9 +44,9 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   }
 
   const effortColors: Record<string, string> = {
-    high: 'from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500',
-    medium: 'from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500',
-    low: 'from-green-600 to-teal-600 hover:from-green-500 hover:to-teal-500'
+    high: 'from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500',
+    medium: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500',
+    low: 'from-accent-600 to-teal-600 hover:from-accent-500 hover:to-teal-500'
   }
 
   const effortEmoji: Record<string, string> = {
@@ -71,10 +71,10 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
     return (
       <div className="card">
         <h2 className="text-lg font-semibold mb-3">What Should I Do Today?</h2>
-        <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 text-center">
-          <span className="text-3xl mb-2 block">✅</span>
-          <p className="text-green-400 font-medium">Already trained today!</p>
-          <p className="text-gray-400 text-sm mt-1">Nice work. Rest up for tomorrow.</p>
+        <div className="bg-accent-900/30 border border-accent-700 rounded-xl p-5 text-center">
+          <span className="text-4xl mb-2 block">✅</span>
+          <p className="text-accent-400 font-semibold text-lg">Already trained today!</p>
+          <p className="text-stone-500 text-sm mt-1">Nice work. Rest up for tomorrow.</p>
         </div>
       </div>
     )
@@ -84,7 +84,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
     return (
       <div className="card">
         <h2 className="text-lg font-semibold mb-3">What Should I Do Today?</h2>
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-stone-500 text-sm mb-4">
           Get AI-powered training suggestions based on your schedule and recovery
         </p>
         <button
@@ -103,9 +103,9 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
     return (
       <div className="card">
         <h2 className="text-lg font-semibold mb-4">What Should I Do Today?</h2>
-        <div className="text-center py-6">
-          <div className="inline-block w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-gray-400 text-sm">Analyzing your training...</p>
+        <div className="text-center py-8">
+          <div className="inline-block w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="text-stone-500 text-sm">Analyzing your training...</p>
         </div>
       </div>
     )
@@ -115,7 +115,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
     return (
       <div className="card">
         <h2 className="text-lg font-semibold mb-3">What Should I Do Today?</h2>
-        <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 mb-3">
+        <div className="bg-red-900/30 border border-red-700 rounded-xl p-4 mb-3">
           <p className="text-red-400 text-sm">{error}</p>
         </div>
         <button onClick={handleGenerate} className="btn-secondary w-full">
@@ -131,7 +131,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
         <h2 className="text-lg font-semibold">Today's Options</h2>
         <button
           onClick={handleGenerate}
-          className="text-sm text-indigo-400 hover:text-indigo-300"
+          className="text-sm text-rose-400 hover:text-rose-300 font-medium"
           disabled={loading}
         >
           Refresh
@@ -143,14 +143,14 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
           <button
             key={index}
             onClick={() => handleOptionClick(option)}
-            className={`w-full p-4 rounded-lg bg-gradient-to-r ${effortColors[option.effort]} transition-all text-left`}
+            className={`w-full p-4 rounded-xl bg-gradient-to-r ${effortColors[option.effort]} transition-all text-left shadow-lg`}
           >
             <div className="flex items-start gap-3">
               <span className="text-2xl">{effortEmoji[option.effort]}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-semibold">{option.title}</span>
-                  <span className="text-xs opacity-75 bg-black/20 px-2 py-0.5 rounded">
+                  <span className="text-xs opacity-75 bg-black/20 px-2 py-0.5 rounded-lg">
                     {effortLabels[option.effort]}
                   </span>
                 </div>
@@ -159,7 +159,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
                   {option.exercises.slice(0, 4).map((exercise, i) => (
                     <span
                       key={i}
-                      className="text-xs bg-black/20 px-2 py-0.5 rounded"
+                      className="text-xs bg-black/20 px-2 py-0.5 rounded-lg"
                     >
                       {exercise}
                     </span>

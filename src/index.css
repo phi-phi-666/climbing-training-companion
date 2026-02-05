@@ -4,29 +4,29 @@
 
 @layer base {
   body {
-    @apply antialiased;
+    @apply antialiased font-sans;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-colors active:scale-95;
+    @apply bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-rose-500/20;
   }
 
   .btn-secondary {
-    @apply bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-colors active:scale-95;
+    @apply bg-stone-800 hover:bg-stone-700 text-stone-100 font-medium py-3 px-4 rounded-xl transition-all active:scale-95 border border-stone-700;
   }
 
   .card {
-    @apply bg-gray-800 rounded-xl p-4 shadow-lg;
+    @apply bg-stone-900 rounded-2xl p-5 shadow-xl border border-stone-800/50;
   }
 
   .input {
-    @apply bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full;
+    @apply bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-stone-100 placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 w-full transition-all;
   }
 
   .select {
-    @apply bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full appearance-none;
+    @apply bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-stone-100 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 w-full appearance-none transition-all;
   }
 }
 

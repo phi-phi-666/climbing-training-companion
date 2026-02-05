@@ -10,11 +10,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Climbing Companion',
-        short_name: 'Climbing',
-        description: 'Track climbing training, workouts, and nutrition',
-        theme_color: '#1f2937',
-        background_color: '#111827',
+        name: 'Alpha',
+        short_name: 'Alpha',
+        description: 'Your climbing training companion',
+        theme_color: '#0c0a09',
+        background_color: '#0c0a09',
         display: 'standalone',
         icons: [
           {

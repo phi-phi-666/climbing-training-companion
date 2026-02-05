@@ -110,10 +110,10 @@ export default function LogSession() {
             <button
               key={option.value}
               onClick={() => setSessionDate(option.value)}
-              className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 sessionDate === option.value
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
               }`}
             >
               {option.label}
@@ -129,14 +129,14 @@ export default function LogSession() {
             <button
               key={type.value}
               onClick={() => setSessionType(type.value)}
-              className={`p-4 rounded-lg text-center transition-colors ${
+              className={`p-4 rounded-xl text-center transition-all ${
                 sessionType === type.value
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
               }`}
             >
               <div className="text-2xl mb-1">{type.emoji}</div>
-              <div className="text-sm">{type.label}</div>
+              <div className="text-sm font-medium">{type.label}</div>
             </button>
           ))}
         </div>
@@ -151,14 +151,14 @@ export default function LogSession() {
               <button
                 key={subType.value}
                 onClick={() => setBoulderSubType(subType.value)}
-                className={`p-3 rounded-lg text-center transition-colors ${
+                className={`p-3 rounded-xl text-center transition-all ${
                   boulderSubType === subType.value
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
                 }`}
               >
                 <div className="text-xl mb-1">{subType.emoji}</div>
-                <div className="text-sm">{subType.label}</div>
+                <div className="text-sm font-medium">{subType.label}</div>
               </button>
             ))}
           </div>
@@ -168,13 +168,13 @@ export default function LogSession() {
       <section className="card">
         <button
           onClick={() => setShowWarmup(true)}
-          className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-colors"
+          className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-rose-600 to-rose-500 rounded-xl hover:from-rose-500 hover:to-rose-400 transition-all shadow-lg shadow-rose-500/20"
         >
           <div className="flex items-center gap-3">
             <span className="text-2xl">✨</span>
             <div className="text-left">
-              <div className="font-medium">Generate AI Warmup</div>
-              <div className="text-sm text-indigo-200">
+              <div className="font-semibold">Generate AI Warmup</div>
+              <div className="text-sm text-rose-200">
                 Personalized for your session
               </div>
             </div>
@@ -183,13 +183,13 @@ export default function LogSession() {
         </button>
         <button
           onClick={() => setShowCooldown(true)}
-          className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-teal-600 to-cyan-600 rounded-lg hover:from-teal-500 hover:to-cyan-500 transition-colors mt-2"
+          className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-accent-600 to-accent-500 rounded-xl hover:from-accent-500 hover:to-accent-400 transition-all mt-3 shadow-lg shadow-accent-500/20"
         >
           <div className="flex items-center gap-3">
             <span className="text-2xl">🧘</span>
             <div className="text-left">
-              <div className="font-medium">Generate AI Cooldown</div>
-              <div className="text-sm text-teal-200">
+              <div className="font-semibold">Generate AI Cooldown</div>
+              <div className="text-sm text-accent-200">
                 Stretches for recovery
               </div>
             </div>
@@ -205,10 +205,10 @@ export default function LogSession() {
             <button
               key={group}
               onClick={() => toggleGroup(group)}
-              className={`px-3 py-2 rounded-lg text-sm capitalize transition-colors ${
+              className={`px-3 py-2 rounded-xl text-sm capitalize font-medium transition-all ${
                 selectedGroups.includes(group)
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
+                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
               }`}
             >
               {group}
@@ -225,10 +225,10 @@ export default function LogSession() {
               <button
                 key={exercise}
                 onClick={() => toggleExercise(exercise)}
-                className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                   selectedExercises.includes(exercise)
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
                 }`}
               >
                 {exercise}
@@ -248,9 +248,9 @@ export default function LogSession() {
             step="15"
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
-            className="flex-1"
+            className="flex-1 accent-rose-500"
           />
-          <span className="font-mono text-xl w-16 text-right">{duration}</span>
+          <span className="font-mono text-xl w-16 text-right text-rose-400">{duration}</span>
         </div>
       </section>
 
@@ -267,7 +267,7 @@ export default function LogSession() {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="btn-primary w-full text-lg"
+        className="btn-primary w-full text-lg py-4"
       >
         {saving ? 'Saving...' : 'Save Session'}
       </button>

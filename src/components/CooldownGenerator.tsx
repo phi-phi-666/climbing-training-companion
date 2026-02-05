@@ -60,15 +60,15 @@ export default function CooldownGenerator({
     <div className="space-y-4">
       {!cooldown && !loading && (
         <div className="text-center py-4">
-          <p className="text-gray-300 mb-4">
+          <p className="text-stone-300 mb-4">
             Generate an AI-powered cooldown routine tailored for your{' '}
-            <span className="font-semibold text-indigo-400">
+            <span className="font-semibold text-accent-400">
               {getSessionLabel()}
             </span>{' '}
             session to aid recovery.
           </p>
           {hasMuscleGroups && (
-            <p className="text-gray-400 text-sm mb-4">
+            <p className="text-stone-500 text-sm mb-4">
               Targeting: {muscleGroups.join(', ')}
             </p>
           )}
@@ -84,13 +84,13 @@ export default function CooldownGenerator({
 
       {loading && (
         <div className="text-center py-8">
-          <div className="inline-block w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-gray-400">Generating your cooldown...</p>
+          <div className="inline-block w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-stone-400">Generating your cooldown...</p>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
+        <div className="bg-red-900/30 border border-red-700 rounded-xl p-4">
           <p className="text-red-400 text-sm">{error}</p>
           <button
             onClick={handleGenerate}
@@ -103,8 +103,8 @@ export default function CooldownGenerator({
 
       {cooldown && (
         <div className="space-y-4">
-          <div className="bg-gray-700 rounded-lg p-4">
-            <div className="text-sm leading-relaxed">
+          <div className="bg-stone-800 rounded-xl p-4 border border-stone-700">
+            <div className="text-sm leading-relaxed text-stone-200">
               {cooldown.split('\n').map((line, i) => (
                 <p key={i} className={line.trim() ? 'mb-2' : 'mb-4'}>
                   {line}

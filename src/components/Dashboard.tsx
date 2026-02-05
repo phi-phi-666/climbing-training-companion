@@ -49,9 +49,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <header className="text-center py-4">
-        <h1 className="text-2xl font-bold">Climbing Companion</h1>
-        <p className="text-gray-400 text-sm">
+      <header className="text-center py-6">
+        <h1 className="text-3xl font-bold tracking-tight text-rose-400">Alpha</h1>
+        <p className="text-stone-500 text-sm mt-1">
           {new Date().toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'long',
@@ -73,16 +73,16 @@ export default function Dashboard() {
 
       <section className="card">
         <h2 className="text-lg font-semibold mb-3">Quick Cooldown</h2>
-        <p className="text-gray-400 text-sm mb-3">Generate a stretch routine for any session type</p>
+        <p className="text-stone-500 text-sm mb-3">Generate a stretch routine for any session type</p>
         <div className="grid grid-cols-2 gap-2">
           {sessionTypes.map((type) => (
             <button
               key={type.value}
               onClick={() => handleQuickCooldown(type.value)}
-              className="p-3 bg-gradient-to-r from-teal-600/50 to-cyan-600/50 hover:from-teal-600 hover:to-cyan-600 rounded-lg transition-colors flex items-center gap-2"
+              className="p-3 bg-gradient-to-r from-accent-700/50 to-accent-600/50 hover:from-accent-600 hover:to-accent-500 rounded-xl transition-all flex items-center gap-2 border border-accent-700/30"
             >
               <span className="text-lg">{type.emoji}</span>
-              <span className="text-sm">{type.label}</span>
+              <span className="text-sm font-medium">{type.label}</span>
             </button>
           ))}
         </div>
@@ -93,14 +93,14 @@ export default function Dashboard() {
         {recentSessions.length > 0 ? (
           <ul className="space-y-2">
             {recentSessions.map((session) => (
-              <li key={session.id} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-0">
-                <div>
-                  <span className="mr-2">
+              <li key={session.id} className="flex justify-between items-center py-3 border-b border-stone-800 last:border-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">
                     {sessionTypes.find((t) => t.value === session.type)?.emoji}
                   </span>
-                  <span>{getSessionDisplayLabel(session)}</span>
+                  <span className="font-medium">{getSessionDisplayLabel(session)}</span>
                 </div>
-                <div className="text-gray-400 text-sm">
+                <div className="text-stone-500 text-sm">
                   {new Date(session.date).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric'
@@ -110,7 +110,7 @@ export default function Dashboard() {
             ))}
           </ul>
         ) : (
-          <p className="text-gray-400 text-sm">No sessions logged yet</p>
+          <p className="text-stone-500 text-sm text-center py-4">No sessions logged yet</p>
         )}
       </section>
 
@@ -140,12 +140,12 @@ function DaysSinceCard({
   const days = useDaysSinceLastSession(type)
 
   return (
-    <div className="bg-gray-700 rounded-lg p-3 text-center">
+    <div className="bg-stone-800/50 rounded-xl p-3 text-center border border-stone-700/50">
       <div className="text-2xl mb-1">{emoji}</div>
-      <div className="text-2xl font-bold">
+      <div className="text-2xl font-bold text-rose-400">
         {days === null ? '-' : days === 0 ? 'Today' : days}
       </div>
-      <div className="text-xs text-gray-400">{label}</div>
+      <div className="text-xs text-stone-500 font-medium">{label}</div>
     </div>
   )
 }
