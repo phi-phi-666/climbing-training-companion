@@ -6,8 +6,7 @@ export const muscleGroups = [
   'core',
   'chest',
   'triceps',
-  'legs',
-  'mobility'
+  'legs'
 ] as const
 
 export type MuscleGroup = (typeof muscleGroups)[number]
@@ -90,49 +89,146 @@ export const exercisesByGroup: Record<MuscleGroup, string[]> = {
     'Bulgarian split squats',
     'Box jumps',
     'Step-ups'
+  ]
+}
+
+// CrossFit-specific exercises by muscle group
+export const crossfitExercisesByGroup: Record<MuscleGroup, string[]> = {
+  fingers: [
+    'Barbell grip holds',
+    'Farmers carry',
+    'Rope climbs'
   ],
-  mobility: [
-    'Hip 90/90',
-    'Shoulder stretches',
-    'Thoracic rotation',
-    'Wrist stretches',
-    'Frog stretch',
-    'Pigeon pose',
-    'Cat-cow',
-    'World\'s greatest stretch'
+  forearms: [
+    'Wrist curls',
+    'Farmers carry',
+    'Dead hangs'
+  ],
+  shoulders: [
+    'Thrusters',
+    'Push press',
+    'Push jerk',
+    'Split jerk',
+    'Handstand push-ups',
+    'Overhead squat',
+    'Snatch',
+    'Shoulder to overhead'
+  ],
+  back: [
+    'Pull-ups',
+    'Chest-to-bar pull-ups',
+    'Muscle-ups',
+    'Ring rows',
+    'Deadlifts',
+    'Power cleans',
+    'Hang cleans',
+    'Snatch'
+  ],
+  core: [
+    'Toes-to-bar',
+    'Knees-to-elbows',
+    'GHD sit-ups',
+    'L-sits',
+    'Hollow rocks',
+    'V-ups',
+    'Ab mat sit-ups',
+    'Plank holds'
+  ],
+  chest: [
+    'Push-ups',
+    'Ring dips',
+    'Bench press',
+    'Ring push-ups',
+    'Hand-release push-ups',
+    'Muscle-ups'
+  ],
+  triceps: [
+    'Ring dips',
+    'Push-ups',
+    'Handstand push-ups',
+    'Close-grip bench press',
+    'Tricep pushdowns'
+  ],
+  legs: [
+    'Back squats',
+    'Front squats',
+    'Overhead squats',
+    'Thrusters',
+    'Wall balls',
+    'Box jumps',
+    'Lunges',
+    'Pistol squats',
+    'Power cleans',
+    'Clean and jerk',
+    'Double-unders',
+    'Assault bike'
   ]
 }
 
 // Bouldering sub-types
 export const boulderSubTypes = [
-  { value: 'problems', label: 'Problems', emoji: '🪨' },
-  { value: 'circuits', label: 'Circuits', emoji: '🔄' },
-  { value: 'campus', label: 'Campus Board', emoji: '🪜' },
-  { value: 'intervals', label: 'Intervals', emoji: '⏱️' }
+  { value: 'problems', label: 'Problems' },
+  { value: 'circuits', label: 'Circuits' },
+  { value: 'campus', label: 'Campus Board' },
+  { value: 'intervals', label: 'Intervals' }
 ] as const
 
 export type BoulderSubType = (typeof boulderSubTypes)[number]['value']
 
+// Cardio sub-types
+export const cardioSubTypes = [
+  { value: 'bike', label: 'Cycling' },
+  { value: 'elliptical', label: 'Elliptical' },
+  { value: 'run', label: 'Running' },
+  { value: 'row', label: 'Rowing' }
+] as const
+
+export type CardioSubType = (typeof cardioSubTypes)[number]['value']
+
+// Mobility exercises
+export const mobilityExercises = [
+  'Hip 90/90',
+  'Shoulder stretches',
+  'Thoracic rotation',
+  'Wrist stretches',
+  'Frog stretch',
+  'Pigeon pose',
+  'Cat-cow',
+  'World\'s greatest stretch',
+  'Couch stretch',
+  'Banded hip flexor stretch',
+  'Foam rolling',
+  'Lacrosse ball work',
+  'Ankle mobility',
+  'Deep squat hold',
+  'Wall slides',
+  'Thread the needle'
+]
+
 export const sessionTypes = [
-  { value: 'boulder', label: 'Bouldering', emoji: '🪨', hasSubTypes: true },
-  { value: 'lead', label: 'Lead Climbing', emoji: '🧗', hasSubTypes: false },
-  { value: 'hangboard', label: 'Hangboard', emoji: '🤏', hasSubTypes: false },
-  { value: 'gym', label: 'Gym', emoji: '💪', hasSubTypes: false },
-  { value: 'cardio', label: 'Cardio', emoji: '🏃', hasSubTypes: false },
-  { value: 'hiit', label: 'HIIT', emoji: '🔥', hasSubTypes: false },
-  { value: 'crossfit', label: 'CrossFit', emoji: '🏋️', hasSubTypes: false }
+  { value: 'boulder', label: 'Bouldering', hasSubTypes: true },
+  { value: 'lead', label: 'Lead Climbing', hasSubTypes: false },
+  { value: 'hangboard', label: 'Hangboard', hasSubTypes: false },
+  { value: 'gym', label: 'Gym', hasSubTypes: false },
+  { value: 'cardio', label: 'Cardio', hasSubTypes: true },
+  { value: 'hiit', label: 'HIIT', hasSubTypes: false },
+  { value: 'crossfit', label: 'CrossFit', hasSubTypes: false },
+  { value: 'mobility', label: 'Mobility', hasSubTypes: false }
 ] as const
 
 export type SessionType = (typeof sessionTypes)[number]['value']
 
-export function getExercisesForGroups(groups: MuscleGroup[]): string[] {
-  return groups.flatMap((group) => exercisesByGroup[group])
+export function getExercisesForGroups(groups: MuscleGroup[], isCrossfit: boolean = false): string[] {
+  const exerciseMap = isCrossfit ? crossfitExercisesByGroup : exercisesByGroup
+  return groups.flatMap((group) => exerciseMap[group])
 }
 
 export function getMuscleGroupForExercise(
-  exerciseName: string
+  exerciseName: string,
+  isCrossfit: boolean = false
 ): MuscleGroup | null {
-  for (const [group, exercises] of Object.entries(exercisesByGroup)) {
+  const exerciseMap = isCrossfit ? crossfitExercisesByGroup : exercisesByGroup
+  for (const [group, exercises] of Object.entries(exerciseMap)) {
     if (exercises.includes(exerciseName)) {
       return group as MuscleGroup
     }

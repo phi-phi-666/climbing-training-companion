@@ -189,6 +189,13 @@ function buildWarmupPrompt(
 - Core and lower back preparation
 - Prepare for varied, intense movements`
       break
+    case 'mobility':
+      sessionGuidance = `This is a MOBILITY session. Focus on:
+- Gentle joint mobilization
+- Progressive stretching from larger to smaller muscle groups
+- Breath-focused movements
+- This IS the workout, so no need to rush through warmup`
+      break
     default:
       sessionGuidance = 'General athletic warmup'
   }
@@ -296,6 +303,7 @@ export interface DaysSinceByType {
   cardio: number | null
   hiit: number | null
   crossfit: number | null
+  mobility: number | null
 }
 
 export interface TodayOption {
@@ -322,9 +330,10 @@ Session types available:
 - lead
 - hangboard
 - gym (strength training)
-- cardio
+- cardio (with sub-types: cycling, elliptical, running, rowing)
 - hiit
 - crossfit
+- mobility
 
 Days since last session by type:
 ${daysSinceText}

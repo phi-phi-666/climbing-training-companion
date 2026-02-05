@@ -1,6 +1,30 @@
 import { useSessionHistory, deleteSession, type Session } from '../hooks/useSessionHistory'
-import { sessionTypes, boulderSubTypes } from '../data/exercises'
+import { sessionTypes, boulderSubTypes, cardioSubTypes } from '../data/exercises'
 import { useState } from 'react'
+import {
+  Mountain,
+  Dumbbell,
+  Hand,
+  Flame,
+  Footprints,
+  Zap,
+  StretchHorizontal,
+  ChevronUp,
+  ChevronDown,
+  type LucideIcon
+} from 'lucide-react'
+
+// Icon mapping for session types
+const sessionIcons: Record<string, LucideIcon> = {
+  boulder: Mountain,
+  lead: Mountain,
+  hangboard: Hand,
+  gym: Dumbbell,
+  cardio: Footprints,
+  hiit: Flame,
+  crossfit: Zap,
+  mobility: StretchHorizontal
+}
 
 export default function History() {
   const sessions = useSessionHistory(30)
@@ -26,6 +50,10 @@ export default function History() {
     const typeInfo = sessionTypes.find((t) => t.value === session.type)
     if (session.type === 'boulder' && session.boulderSubType) {
       const subType = boulderSubTypes.find(t => t.value === session.boulderSubType)
+      return `${typeInfo?.label} - ${subType?.label}`
+    }
+    if (session.type === 'cardio' && session.cardioSubType) {
+      const subType = cardioSubTypes.find(t => t.value === session.cardioSubType)
       return `${typeInfo?.label} - ${subType?.label}`
     }
     return typeInfo?.label || session.type
@@ -56,7 +84,7 @@ export default function History() {
               </h2>
               <div className="space-y-2">
                 {daySessions.map((session) => {
-                  const typeInfo = sessionTypes.find((t) => t.value === session.type)
+                  const Icon = sessionIcons[session.type]
                   const isExpanded = expandedId === session.id
 
                   return (
@@ -69,7 +97,7 @@ export default function History() {
                         className="w-full p-4 flex items-center justify-between text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="text-xl">{typeInfo?.emoji}</span>
+                          <Icon size={24} strokeWidth={1.5} className="text-rose-400" />
                           <div>
                             <div className="font-medium">{getSessionLabel(session)}</div>
                             <div className="text-sm text-stone-500">
@@ -80,7 +108,11 @@ export default function History() {
                             </div>
                           </div>
                         </div>
-                        <span className="text-stone-500">{isExpanded ? '▲' : '▼'}</span>
+                        {isExpanded ? (
+                          <ChevronUp size={20} strokeWidth={1.5} className="text-stone-500" />
+                        ) : (
+                          <ChevronDown size={20} strokeWidth={1.5} className="text-stone-500" />
+                        )}
                       </button>
 
                       {isExpanded && (

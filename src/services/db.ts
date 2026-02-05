@@ -11,8 +11,9 @@ export interface Exercise {
 export interface Session {
   id?: number
   date: string
-  type: 'boulder' | 'lead' | 'hangboard' | 'gym' | 'cardio' | 'hiit' | 'crossfit'
+  type: 'boulder' | 'lead' | 'hangboard' | 'gym' | 'cardio' | 'hiit' | 'crossfit' | 'mobility'
   boulderSubType?: 'problems' | 'circuits' | 'campus' | 'intervals'
+  cardioSubType?: 'bike' | 'elliptical' | 'run' | 'row'
   exercises: Exercise[]
   durationMinutes: number
   notes?: string
@@ -34,6 +35,11 @@ db.version(1).stores({
 db.version(2).stores({
   sessions: '++id, date, type, createdAt',
   dailyNutrition: null // Delete the table
+})
+
+// Version 3: Add cardioSubType and mobility session type
+db.version(3).stores({
+  sessions: '++id, date, type, createdAt'
 })
 
 export { db }

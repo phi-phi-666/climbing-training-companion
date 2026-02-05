@@ -4,15 +4,54 @@ import { addSession, type Exercise } from '../hooks/useSessionHistory'
 import {
   sessionTypes,
   boulderSubTypes,
+  cardioSubTypes,
   muscleGroups,
   exercisesByGroup,
+  crossfitExercisesByGroup,
+  mobilityExercises,
   type MuscleGroup,
   type SessionType,
-  type BoulderSubType
+  type BoulderSubType,
+  type CardioSubType
 } from '../data/exercises'
 import Modal from './ui/Modal'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
+import {
+  Mountain,
+  Dumbbell,
+  Hand,
+  Flame,
+  Bike,
+  Sparkles,
+  ChevronRight,
+  Footprints,
+  Rows3,
+  CircleDot,
+  Zap,
+  StretchHorizontal,
+  type LucideIcon
+} from 'lucide-react'
+
+// Icon mapping for session types
+const sessionIcons: Record<string, LucideIcon> = {
+  boulder: Mountain,
+  lead: Mountain,
+  hangboard: Hand,
+  gym: Dumbbell,
+  cardio: Footprints,
+  hiit: Flame,
+  crossfit: Zap,
+  mobility: StretchHorizontal
+}
+
+// Icon mapping for cardio sub-types
+const cardioIcons: Record<string, LucideIcon> = {
+  bike: Bike,
+  elliptical: CircleDot,
+  run: Footprints,
+  row: Rows3
+}
 
 function getDateOptions(): { value: string; label: string }[] {
   const options = []
@@ -43,8 +82,10 @@ export default function LogSession() {
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0])
   const [sessionType, setSessionType] = useState<SessionType>('boulder')
   const [boulderSubType, setBoulderSubType] = useState<BoulderSubType>('problems')
+  const [cardioSubType, setCardioSubType] = useState<CardioSubType>('run')
   const [selectedGroups, setSelectedGroups] = useState<MuscleGroup[]>([])
   const [selectedExercises, setSelectedExercises] = useState<string[]>([])
+  const [selectedMobilityExercises, setSelectedMobilityExercises] = useState<string[]>([])
   const [duration, setDuration] = useState(60)
   const [notes, setNotes] = useState('')
   const [warmup, setWarmup] = useState<string | null>(null)
@@ -54,6 +95,8 @@ export default function LogSession() {
   const [showCooldown, setShowCooldown] = useState(false)
 
   const dateOptions = getDateOptions()
+  const isCrossfit = sessionType === 'crossfit'
+  const exerciseMap = isCrossfit ? crossfitExercisesByGroup : exercisesByGroup
 
   const toggleGroup = (group: MuscleGroup) => {
     setSelectedGroups((prev) =>
@@ -69,24 +112,46 @@ export default function LogSession() {
     )
   }
 
+  const toggleMobilityExercise = (exercise: string) => {
+    setSelectedMobilityExercises((prev) =>
+      prev.includes(exercise)
+        ? prev.filter((e) => e !== exercise)
+        : [...prev, exercise]
+    )
+  }
+
   const availableExercises = selectedGroups.flatMap(
-    (group) => exercisesByGroup[group]
+    (group) => exerciseMap[group]
   )
+
+  // Session types that show muscle groups / exercises
+  const showMuscleGroups = ['gym', 'crossfit', 'hiit'].includes(sessionType)
+  const showMobilityExercises = sessionType === 'mobility'
 
   const handleSave = async () => {
     if (saving) return
     setSaving(true)
 
-    const exercises: Exercise[] = selectedExercises.map((name) => {
-      const muscleGroup =
-        selectedGroups.find((g) => exercisesByGroup[g].includes(name)) || ''
-      return { name, muscleGroup }
-    })
+    let exercises: Exercise[] = []
+
+    if (showMobilityExercises) {
+      exercises = selectedMobilityExercises.map((name) => ({
+        name,
+        muscleGroup: 'mobility'
+      }))
+    } else if (showMuscleGroups) {
+      exercises = selectedExercises.map((name) => {
+        const muscleGroup =
+          selectedGroups.find((g) => exerciseMap[g].includes(name)) || ''
+        return { name, muscleGroup }
+      })
+    }
 
     await addSession({
       date: sessionDate,
       type: sessionType,
       boulderSubType: sessionType === 'boulder' ? boulderSubType : undefined,
+      cardioSubType: sessionType === 'cardio' ? cardioSubType : undefined,
       exercises,
       durationMinutes: duration,
       notes: notes || undefined,
@@ -125,20 +190,23 @@ export default function LogSession() {
       <section className="card">
         <h2 className="text-lg font-semibold mb-3">Session Type</h2>
         <div className="grid grid-cols-2 gap-2">
-          {sessionTypes.map((type) => (
-            <button
-              key={type.value}
-              onClick={() => setSessionType(type.value)}
-              className={`p-4 rounded-xl text-center transition-all ${
-                sessionType === type.value
-                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
-                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
-              }`}
-            >
-              <div className="text-2xl mb-1">{type.emoji}</div>
-              <div className="text-sm font-medium">{type.label}</div>
-            </button>
-          ))}
+          {sessionTypes.map((type) => {
+            const Icon = sessionIcons[type.value]
+            return (
+              <button
+                key={type.value}
+                onClick={() => setSessionType(type.value)}
+                className={`p-4 rounded-xl text-center transition-all ${
+                  sessionType === type.value
+                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                }`}
+              >
+                <Icon size={28} strokeWidth={1.5} className="mx-auto mb-2" />
+                <div className="text-sm font-medium">{type.label}</div>
+              </button>
+            )
+          })}
         </div>
       </section>
 
@@ -157,8 +225,55 @@ export default function LogSession() {
                     : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
                 }`}
               >
-                <div className="text-xl mb-1">{subType.emoji}</div>
                 <div className="text-sm font-medium">{subType.label}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Cardio Sub-Types */}
+      {sessionType === 'cardio' && (
+        <section className="card">
+          <h2 className="text-lg font-semibold mb-3">Cardio Type</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {cardioSubTypes.map((subType) => {
+              const Icon = cardioIcons[subType.value]
+              return (
+                <button
+                  key={subType.value}
+                  onClick={() => setCardioSubType(subType.value)}
+                  className={`p-3 rounded-xl text-center transition-all ${
+                    cardioSubType === subType.value
+                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20'
+                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                  }`}
+                >
+                  <Icon size={24} strokeWidth={1.5} className="mx-auto mb-1" />
+                  <div className="text-sm font-medium">{subType.label}</div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Mobility Exercises */}
+      {showMobilityExercises && (
+        <section className="card">
+          <h2 className="text-lg font-semibold mb-3">Exercises</h2>
+          <div className="flex flex-wrap gap-2">
+            {mobilityExercises.map((exercise) => (
+              <button
+                key={exercise}
+                onClick={() => toggleMobilityExercise(exercise)}
+                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                  selectedMobilityExercises.includes(exercise)
+                    ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                }`}
+              >
+                {exercise}
               </button>
             ))}
           </div>
@@ -171,7 +286,7 @@ export default function LogSession() {
           className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-rose-600 to-rose-500 rounded-xl hover:from-rose-500 hover:to-rose-400 transition-all shadow-lg shadow-rose-500/20"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl">✨</span>
+            <Sparkles size={24} strokeWidth={1.5} />
             <div className="text-left">
               <div className="font-semibold">Generate AI Warmup</div>
               <div className="text-sm text-rose-200">
@@ -179,14 +294,14 @@ export default function LogSession() {
               </div>
             </div>
           </div>
-          <span className="text-xl">→</span>
+          <ChevronRight size={24} strokeWidth={1.5} />
         </button>
         <button
           onClick={() => setShowCooldown(true)}
           className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-accent-600 to-accent-500 rounded-xl hover:from-accent-500 hover:to-accent-400 transition-all mt-3 shadow-lg shadow-accent-500/20"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🧘</span>
+            <StretchHorizontal size={24} strokeWidth={1.5} />
             <div className="text-left">
               <div className="font-semibold">Generate AI Cooldown</div>
               <div className="text-sm text-accent-200">
@@ -194,32 +309,38 @@ export default function LogSession() {
               </div>
             </div>
           </div>
-          <span className="text-xl">→</span>
+          <ChevronRight size={24} strokeWidth={1.5} />
         </button>
       </section>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold mb-3">Muscle Groups</h2>
-        <div className="flex flex-wrap gap-2">
-          {muscleGroups.map((group) => (
-            <button
-              key={group}
-              onClick={() => toggleGroup(group)}
-              className={`px-3 py-2 rounded-xl text-sm capitalize font-medium transition-all ${
-                selectedGroups.includes(group)
-                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
-                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
-              }`}
-            >
-              {group}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {availableExercises.length > 0 && (
+      {/* Muscle Groups - only for gym, crossfit, hiit */}
+      {showMuscleGroups && (
         <section className="card">
-          <h2 className="text-lg font-semibold mb-3">Exercises</h2>
+          <h2 className="text-lg font-semibold mb-3">Muscle Groups</h2>
+          <div className="flex flex-wrap gap-2">
+            {muscleGroups.map((group) => (
+              <button
+                key={group}
+                onClick={() => toggleGroup(group)}
+                className={`px-3 py-2 rounded-xl text-sm capitalize font-medium transition-all ${
+                  selectedGroups.includes(group)
+                    ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                }`}
+              >
+                {group}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Exercises - only when muscle groups selected */}
+      {showMuscleGroups && availableExercises.length > 0 && (
+        <section className="card">
+          <h2 className="text-lg font-semibold mb-3">
+            Exercises {isCrossfit && <span className="text-rose-400 text-sm">(CrossFit)</span>}
+          </h2>
           <div className="flex flex-wrap gap-2">
             {availableExercises.map((exercise) => (
               <button
@@ -244,7 +365,7 @@ export default function LogSession() {
           <input
             type="range"
             min="15"
-            max="180"
+            max="240"
             step="15"
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}

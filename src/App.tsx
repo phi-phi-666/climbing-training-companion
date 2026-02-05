@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import Dashboard from './components/Dashboard'
 import LogSession from './components/LogSession'
 import History from './components/History'
+import { Home, Plus, Calendar } from 'lucide-react'
 
 function App() {
   return (
@@ -25,7 +26,7 @@ function App() {
                 }`
               }
             >
-              <span className="text-xl mb-1">🏠</span>
+              <Home size={24} strokeWidth={1.5} className="mb-1" />
               <span>Home</span>
             </NavLink>
             <NavLink
@@ -36,7 +37,7 @@ function App() {
                 }`
               }
             >
-              <span className="text-xl mb-1">➕</span>
+              <Plus size={24} strokeWidth={1.5} className="mb-1" />
               <span>Log</span>
             </NavLink>
             <NavLink
@@ -47,7 +48,7 @@ function App() {
                 }`
               }
             >
-              <span className="text-xl mb-1">📅</span>
+              <Calendar size={24} strokeWidth={1.5} className="mb-1" />
               <span>History</span>
             </NavLink>
           </div>
