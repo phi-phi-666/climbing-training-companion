@@ -205,6 +205,41 @@ export const mobilityExercises = [
   'Thread the needle'
 ]
 
+// Hangboard exercises
+export const hangboardExercises = [
+  'Max hangs - 20mm edge',
+  'Max hangs - 15mm edge',
+  'Max hangs - 10mm edge',
+  'Repeaters - 20mm edge',
+  'Repeaters - 15mm edge',
+  'Repeaters - 10mm edge',
+  'Half crimp hangs',
+  'Open hand hangs',
+  'Three finger drag',
+  'Front two fingers',
+  'Back two fingers',
+  'Mono hangs',
+  'Pinch hangs',
+  'Sloper hangs',
+  'One arm hangs',
+  'Offset hangs',
+  'Lock-off hangs',
+  'Pull-up repeaters'
+]
+
+// Recovery activities (separate from training sessions)
+export const recoveryTypes = [
+  { value: 'foam_roll', label: 'Foam Rolling' },
+  { value: 'yoga', label: 'Yoga' },
+  { value: 'sauna', label: 'Sauna' },
+  { value: 'cold_plunge', label: 'Cold Plunge' },
+  { value: 'massage', label: 'Massage' },
+  { value: 'breathing', label: 'Breathing Work' },
+  { value: 'sleep', label: 'Extra Sleep' }
+] as const
+
+export type RecoveryType = (typeof recoveryTypes)[number]['value']
+
 export const sessionTypes = [
   { value: 'boulder', label: 'Bouldering', hasSubTypes: true },
   { value: 'lead', label: 'Lead Climbing', hasSubTypes: false },

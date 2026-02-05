@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { addSession, type Exercise } from '../hooks/useSessionHistory'
 import {
   sessionTypes,
@@ -9,14 +9,18 @@ import {
   exercisesByGroup,
   crossfitExercisesByGroup,
   mobilityExercises,
+  hangboardExercises,
+  recoveryTypes,
   type MuscleGroup,
   type SessionType,
   type BoulderSubType,
-  type CardioSubType
+  type CardioSubType,
+  type RecoveryType
 } from '../data/exercises'
 import Modal from './ui/Modal'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
+import type { TodayOption } from '../services/ai'
 import {
   Mountain,
   Dumbbell,
@@ -30,6 +34,7 @@ import {
   CircleDot,
   Zap,
   StretchHorizontal,
+  Heart,
   type LucideIcon
 } from 'lucide-react'
 
@@ -79,6 +84,9 @@ function getDateOptions(): { value: string; label: string }[] {
 
 export default function LogSession() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const prefill = (location.state as { prefill?: TodayOption })?.prefill
+
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0])
   const [sessionType, setSessionType] = useState<SessionType>('boulder')
   const [boulderSubType, setBoulderSubType] = useState<BoulderSubType>('problems')
@@ -86,6 +94,8 @@ export default function LogSession() {
   const [selectedGroups, setSelectedGroups] = useState<MuscleGroup[]>([])
   const [selectedExercises, setSelectedExercises] = useState<string[]>([])
   const [selectedMobilityExercises, setSelectedMobilityExercises] = useState<string[]>([])
+  const [selectedHangboardExercises, setSelectedHangboardExercises] = useState<string[]>([])
+  const [selectedRecovery, setSelectedRecovery] = useState<RecoveryType[]>([])
   const [duration, setDuration] = useState(60)
   const [notes, setNotes] = useState('')
   const [warmup, setWarmup] = useState<string | null>(null)
@@ -93,6 +103,71 @@ export default function LogSession() {
   const [saving, setSaving] = useState(false)
   const [showWarmup, setShowWarmup] = useState(false)
   const [showCooldown, setShowCooldown] = useState(false)
+
+  // Handle prefill from Today's Options
+  useEffect(() => {
+    if (prefill) {
+      setSessionType(prefill.sessionType)
+      setDuration(prefill.durationMinutes)
+
+      if (prefill.boulderSubType) {
+        setBoulderSubType(prefill.boulderSubType)
+      }
+      if (prefill.cardioSubType) {
+        setCardioSubType(prefill.cardioSubType)
+      }
+      if (prefill.muscleGroups) {
+        setSelectedGroups(prefill.muscleGroups as MuscleGroup[])
+      }
+
+      // Build notes from exercises with sets/reps
+      const exerciseNotes = prefill.exercises
+        .map(ex => {
+          let line = ex.name
+          if (ex.sets && ex.reps) {
+            line += `: ${ex.sets}×${ex.reps}`
+          } else if (ex.sets) {
+            line += `: ${ex.sets} sets`
+          } else if (ex.reps) {
+            line += `: ${ex.reps}`
+          }
+          return line
+        })
+        .join('\n')
+
+      let fullNotes = exerciseNotes
+      if (prefill.recoveryNotes) {
+        fullNotes += '\n\n' + prefill.recoveryNotes
+      }
+      setNotes(fullNotes)
+
+      // Try to match exercise names to available exercises
+      const exerciseNames = prefill.exercises.map(e => e.name)
+
+      if (prefill.sessionType === 'mobility') {
+        const matchedMobility = mobilityExercises.filter(e =>
+          exerciseNames.some(name => name.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(name.toLowerCase()))
+        )
+        setSelectedMobilityExercises(matchedMobility)
+      } else if (prefill.sessionType === 'hangboard') {
+        const matchedHangboard = hangboardExercises.filter(e =>
+          exerciseNames.some(name => name.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(name.toLowerCase()))
+        )
+        setSelectedHangboardExercises(matchedHangboard)
+      } else if (['gym', 'crossfit', 'hiit'].includes(prefill.sessionType)) {
+        // Try to auto-select exercises that match
+        const exerciseMap = prefill.sessionType === 'crossfit' ? crossfitExercisesByGroup : exercisesByGroup
+        const allExercises = Object.values(exerciseMap).flat()
+        const matchedExercises = allExercises.filter(e =>
+          exerciseNames.some(name => name.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(name.toLowerCase()))
+        )
+        setSelectedExercises(matchedExercises)
+      }
+
+      // Clear location state so refresh doesn't re-apply
+      window.history.replaceState({}, document.title)
+    }
+  }, [prefill])
 
   const dateOptions = getDateOptions()
   const isCrossfit = sessionType === 'crossfit'
@@ -120,6 +195,20 @@ export default function LogSession() {
     )
   }
 
+  const toggleHangboardExercise = (exercise: string) => {
+    setSelectedHangboardExercises((prev) =>
+      prev.includes(exercise)
+        ? prev.filter((e) => e !== exercise)
+        : [...prev, exercise]
+    )
+  }
+
+  const toggleRecovery = (type: RecoveryType) => {
+    setSelectedRecovery((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    )
+  }
+
   const availableExercises = selectedGroups.flatMap(
     (group) => exerciseMap[group]
   )
@@ -127,6 +216,7 @@ export default function LogSession() {
   // Session types that show muscle groups / exercises
   const showMuscleGroups = ['gym', 'crossfit', 'hiit'].includes(sessionType)
   const showMobilityExercises = sessionType === 'mobility'
+  const showHangboardExercises = sessionType === 'hangboard'
 
   const handleSave = async () => {
     if (saving) return
@@ -139,12 +229,31 @@ export default function LogSession() {
         name,
         muscleGroup: 'mobility'
       }))
+    } else if (showHangboardExercises) {
+      exercises = selectedHangboardExercises.map((name) => ({
+        name,
+        muscleGroup: 'fingers'
+      }))
     } else if (showMuscleGroups) {
       exercises = selectedExercises.map((name) => {
         const muscleGroup =
           selectedGroups.find((g) => exerciseMap[g].includes(name)) || ''
         return { name, muscleGroup }
       })
+    }
+
+    // Add recovery activities to notes if any selected
+    let finalNotes = notes
+    if (selectedRecovery.length > 0) {
+      const recoveryLabels = selectedRecovery
+        .map(r => recoveryTypes.find(rt => rt.value === r)?.label)
+        .filter(Boolean)
+        .join(', ')
+      if (finalNotes) {
+        finalNotes += '\n\nRecovery: ' + recoveryLabels
+      } else {
+        finalNotes = 'Recovery: ' + recoveryLabels
+      }
     }
 
     await addSession({
@@ -154,7 +263,7 @@ export default function LogSession() {
       cardioSubType: sessionType === 'cardio' ? cardioSubType : undefined,
       exercises,
       durationMinutes: duration,
-      notes: notes || undefined,
+      notes: finalNotes || undefined,
       warmup: warmup || undefined,
       cooldown: cooldown || undefined
     })
@@ -166,6 +275,9 @@ export default function LogSession() {
     <div className="space-y-6">
       <header className="py-4">
         <h1 className="text-2xl font-bold">Log Session</h1>
+        {prefill && (
+          <p className="text-rose-400 text-sm mt-1">Pre-filled from Today's Plan</p>
+        )}
       </header>
 
       <section className="card">
@@ -254,6 +366,28 @@ export default function LogSession() {
                 </button>
               )
             })}
+          </div>
+        </section>
+      )}
+
+      {/* Hangboard Exercises */}
+      {showHangboardExercises && (
+        <section className="card">
+          <h2 className="text-lg font-semibold mb-3">Hangboard Exercises</h2>
+          <div className="flex flex-wrap gap-2">
+            {hangboardExercises.map((exercise) => (
+              <button
+                key={exercise}
+                onClick={() => toggleHangboardExercise(exercise)}
+                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                  selectedHangboardExercises.includes(exercise)
+                    ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
+                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                }`}
+              >
+                {exercise}
+              </button>
+            ))}
           </div>
         </section>
       )}
@@ -375,12 +509,36 @@ export default function LogSession() {
         </div>
       </section>
 
+      {/* Recovery Section */}
+      <section className="card border-purple-800/50 bg-gradient-to-br from-stone-900 to-purple-950/30">
+        <div className="flex items-center gap-2 mb-3">
+          <Heart size={20} strokeWidth={1.5} className="text-purple-400" />
+          <h2 className="text-lg font-semibold">Recovery Activities</h2>
+        </div>
+        <p className="text-stone-500 text-sm mb-3">Optional extras (logged in notes)</p>
+        <div className="flex flex-wrap gap-2">
+          {recoveryTypes.map((type) => (
+            <button
+              key={type.value}
+              onClick={() => toggleRecovery(type.value)}
+              className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                selectedRecovery.includes(type.value)
+                  ? 'bg-purple-500 text-white shadow-md shadow-purple-500/20'
+                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+              }`}
+            >
+              {type.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="card">
         <h2 className="text-lg font-semibold mb-3">Notes</h2>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="How did it feel? Any PRs?"
+          placeholder="How did it feel? Any PRs? Sets/reps details..."
           className="input min-h-24 resize-none"
         />
       </section>

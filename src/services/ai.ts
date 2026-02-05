@@ -306,11 +306,24 @@ export interface DaysSinceByType {
   mobility: number | null
 }
 
+// Structured exercise with sets/reps for pre-populating log
+export interface SuggestedExercise {
+  name: string
+  sets?: number
+  reps?: string  // Can be "8-12" or "30 sec" etc.
+}
+
 export interface TodayOption {
   effort: 'high' | 'medium' | 'low'
   title: string
   description: string
-  exercises: string[]
+  sessionType: Session['type']
+  boulderSubType?: 'problems' | 'circuits' | 'campus' | 'intervals'
+  cardioSubType?: 'bike' | 'elliptical' | 'run' | 'row'
+  muscleGroups?: string[]
+  exercises: SuggestedExercise[]
+  durationMinutes: number
+  recoveryNotes?: string  // For things like "finish with 15min foam rolling"
 }
 
 function buildTodayOptionsPrompt(context: AIContext, daysSince: DaysSinceByType): string {
@@ -325,15 +338,15 @@ Fixed climbing schedule:
 - Wednesday: Bouldering
 - Saturday: Lead climbing
 
-Session types available:
-- boulder (with sub-types: problems, circuits, campus board, intervals)
-- lead
-- hangboard
-- gym (strength training)
-- cardio (with sub-types: cycling, elliptical, running, rowing)
-- hiit
-- crossfit
-- mobility
+Session types (ONLY use these exact values for sessionType):
+- "boulder" (with boulderSubType: "problems", "circuits", "campus", or "intervals")
+- "lead"
+- "hangboard"
+- "gym" (with muscleGroups from: fingers, forearms, shoulders, back, core, chest, triceps, legs)
+- "cardio" (with cardioSubType: "bike", "elliptical", "run", or "row")
+- "hiit"
+- "crossfit"
+- "mobility"
 
 Days since last session by type:
 ${daysSinceText}
@@ -346,11 +359,14 @@ Suggest exactly 3 training options for today:
 2. MEDIUM effort - balanced training appropriate for the day
 3. LOW effort - recovery focused, light activity
 
-For each option:
-- Consider if today is a scheduled climbing day
-- Factor in recovery needs based on days since last sessions
-- On non-climbing days, suggest gym, cardio, HIIT, or crossfit
-- Be specific about what to do
+IMPORTANT RULES:
+- Each option MUST map to exactly one sessionType from the list above
+- Exercises must be CONCRETE and LOGGABLE (e.g., "Pull-ups" not "Upper body work")
+- Include sets and reps for strength exercises (e.g., {"name": "Pull-ups", "sets": 3, "reps": "8-10"})
+- For climbing sessions, exercises can be descriptive (e.g., {"name": "V3-V4 problems", "sets": 10})
+- For cardio, just include duration in the exercise (e.g., {"name": "Running", "reps": "30 min"})
+- If suggesting recovery activities (foam rolling, yoga, breathing), put them in recoveryNotes, not as the main session
+- durationMinutes should be realistic (30-120 for most sessions)
 
 Return as JSON with this exact structure:
 {
@@ -359,24 +375,45 @@ Return as JSON with this exact structure:
       "effort": "high",
       "title": "Short title (2-4 words)",
       "description": "One sentence explaining why this fits today",
-      "exercises": ["Exercise 1", "Exercise 2", "Exercise 3"]
+      "sessionType": "boulder",
+      "boulderSubType": "problems",
+      "exercises": [
+        {"name": "V4-V5 projects", "sets": 5},
+        {"name": "V3 flash attempts", "sets": 8}
+      ],
+      "durationMinutes": 90,
+      "recoveryNotes": "15 min foam rolling after"
     },
     {
       "effort": "medium",
-      "title": "Short title",
-      "description": "One sentence explanation",
-      "exercises": ["Exercise 1", "Exercise 2"]
+      "sessionType": "gym",
+      "muscleGroups": ["back", "core"],
+      "title": "Pull Day",
+      "description": "Strengthen pulling muscles for climbing",
+      "exercises": [
+        {"name": "Pull-ups", "sets": 4, "reps": "8-10"},
+        {"name": "Rows", "sets": 3, "reps": "12"},
+        {"name": "Hanging leg raises", "sets": 3, "reps": "10"}
+      ],
+      "durationMinutes": 45
     },
     {
       "effort": "low",
-      "title": "Short title",
-      "description": "One sentence explanation",
-      "exercises": ["Exercise 1", "Exercise 2"]
+      "sessionType": "mobility",
+      "title": "Active Recovery",
+      "description": "Light movement to aid recovery",
+      "exercises": [
+        {"name": "Hip 90/90", "reps": "2 min each side"},
+        {"name": "Shoulder stretches", "reps": "5 min"},
+        {"name": "Thoracic rotation", "sets": 2, "reps": "10 each side"}
+      ],
+      "durationMinutes": 30,
+      "recoveryNotes": "Consider 10 min breathing work before bed"
     }
   ]
 }
 
-IMPORTANT: No markdown in any text fields. Plain text only.`
+IMPORTANT: No markdown in any text fields. Plain text only. sessionType MUST be one of the exact values listed above.`
 }
 
 function stripMarkdownCodeBlock(text: string): string {
