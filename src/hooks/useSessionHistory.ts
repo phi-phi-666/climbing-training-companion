@@ -33,9 +33,17 @@ export function useLastSessionByType(type: Session['type']) {
       db.sessions
         .where('type')
         .equals(type)
-        .reverse()
-        .sortBy('createdAt')
-        .then((sessions) => sessions[0] ?? null),
+        .toArray()
+        .then((sessions) => {
+          if (sessions.length === 0) return null
+          // Sort by date descending, then by createdAt descending to get the most recent
+          sessions.sort((a, b) => {
+            const dateCompare = b.date.localeCompare(a.date)
+            if (dateCompare !== 0) return dateCompare
+            return b.createdAt - a.createdAt
+          })
+          return sessions[0]
+        }),
     [type]
   )
 
