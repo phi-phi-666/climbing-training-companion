@@ -84,4 +84,15 @@ export async function getSessionById(id: number): Promise<Session | undefined> {
   return db.sessions.get(id)
 }
 
+export function useHasSessionToday(): boolean {
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  const sessions = useLiveQuery(
+    () => db.sessions.where('date').equals(todayStr).toArray(),
+    [todayStr]
+  )
+
+  return (sessions?.length ?? 0) > 0
+}
+
 export type { Session, Exercise }

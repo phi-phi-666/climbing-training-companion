@@ -1,12 +1,10 @@
 import type { Session } from './db'
-import type { DailyNutrition } from './db'
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const MODEL = 'anthropic/claude-haiku-4.5'
 
 export interface AIContext {
   lastSessions: Session[]
-  todayNutrition: DailyNutrition | null
   currentDay: string
   scheduledClimbing: string[]
 }
@@ -58,44 +56,187 @@ function formatRecentSessions(sessions: Session[]): string {
 
   return sessions
     .map((s) => {
+      const subType = s.type === 'boulder' && s.boulderSubType ? ` (${s.boulderSubType})` : ''
       const exercises =
         s.exercises.length > 0
           ? ` - ${s.exercises.map((e) => e.name).join(', ')}`
           : ''
-      return `- ${s.date}: ${s.type} (${s.durationMinutes}min)${exercises}`
+      return `- ${s.date}: ${s.type}${subType} (${s.durationMinutes}min)${exercises}`
     })
     .join('\n')
 }
 
-function buildWarmupPrompt(sessionType: string, context: AIContext): string {
-  return `Generate a climbing warmup routine for a ${sessionType} session.
+// Warmup exercise pools for variety
+const warmupPools = {
+  cardio: [
+    'Jumping jacks', 'High knees', 'Butt kicks', 'Star jumps', 'Mountain climbers',
+    'Burpees (light)', 'Jump rope', 'Jogging in place', 'Lateral shuffles', 'Skipping',
+    'Arm circles while walking', 'Fast feet drills', 'Box step-ups', 'Jump squats (light)'
+  ],
+  upperBody: [
+    'Arm circles', 'Shoulder rotations', 'Wrist circles', 'Band pull-aparts',
+    'Scapular push-ups', 'Wall slides', 'Thread the needle', 'Cat-cow stretches',
+    'Thoracic rotations', 'PVC pass-throughs', 'Prone Y raises', 'Cuban rotations',
+    'Face pulls (light)', 'Chest openers'
+  ],
+  fingerPrep: [
+    'Finger spreads and squeezes', 'Wrist flexor stretches', 'Wrist extensor stretches',
+    'Finger tendon glides', 'Rubber band finger extensions', 'Piano fingers',
+    'Prayer stretches', 'Reverse prayer stretches', 'Finger rolls on table',
+    'Light grip squeezes', 'Finger tip touches', 'Finger walking on wall'
+  ],
+  core: [
+    'Dead bugs', 'Bird dogs', 'Plank holds', 'Side plank dips', 'Hollow body rocks',
+    'Mountain climbers (slow)', 'Leg raises (controlled)', 'Bicycle crunches (slow)',
+    'Bear crawl holds', 'Pallof press holds', 'Ab wheel rollouts (partial)',
+    'Hanging knee tucks', 'Russian twist (no weight)', 'Supermans'
+  ],
+  lowerBody: [
+    'Hip circles', 'Leg swings (front-back)', 'Leg swings (side-side)', 'Deep squats',
+    'Walking lunges', 'Cossack squats', 'Hip 90/90 transitions', 'Frog stretches',
+    'Pigeon pose', 'Ankle circles', 'Calf raises', 'Glute bridges',
+    'Fire hydrants', 'Donkey kicks', 'World\'s greatest stretch', 'Inchworms'
+  ],
+  climbingSpecific: [
+    'Easy traverse (juggy)', 'Slab footwork drills', 'Quiet feet practice',
+    'Open hand dead hangs (10 sec)', 'Light campus touches (no pull)',
+    'Flag practice on easy holds', 'Smearing drills', 'Balance practice',
+    'Easy dynos to jugs', 'Mantling on low ledge', 'Drop knee practice'
+  ]
+}
+
+function getRandomFromArray<T>(arr: T[], count: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, count)
+}
+
+function buildWarmupPrompt(
+  sessionType: string,
+  context: AIContext,
+  boulderSubType?: string,
+  muscleGroups?: string[]
+): string {
+  // Generate unique random seed for variety
+  const randomSeed = Date.now() % 1000
+
+  // Pre-select random exercises for the AI to choose from (forces variety)
+  const cardioSample = getRandomFromArray(warmupPools.cardio, 5)
+  const upperSample = getRandomFromArray(warmupPools.upperBody, 5)
+  const fingerSample = getRandomFromArray(warmupPools.fingerPrep, 4)
+  const coreSample = getRandomFromArray(warmupPools.core, 5)
+  const lowerSample = getRandomFromArray(warmupPools.lowerBody, 5)
+  const climbingSample = getRandomFromArray(warmupPools.climbingSpecific, 4)
+
+  const subTypeText = boulderSubType ? ` (${boulderSubType})` : ''
+  const muscleGroupText = muscleGroups && muscleGroups.length > 0
+    ? `\nTarget muscle groups for this session: ${muscleGroups.join(', ')}`
+    : ''
+
+  // Session-specific guidance
+  let sessionGuidance = ''
+  switch (sessionType) {
+    case 'boulder':
+      sessionGuidance = `This is a BOULDERING session${subTypeText}. Focus heavily on:
+- Finger and forearm preparation (critical for crimps and holds)
+- Core activation (essential for body tension)
+- Hip mobility (for high steps and heel hooks)
+- Power generation from legs`
+      if (boulderSubType === 'campus') {
+        sessionGuidance += '\n- Extra emphasis on finger strength prep and explosive movements'
+      } else if (boulderSubType === 'circuits') {
+        sessionGuidance += '\n- Include more cardio as circuits are endurance-focused'
+      }
+      break
+    case 'lead':
+      sessionGuidance = `This is a LEAD CLIMBING session. Focus on:
+- Endurance-building cardio warmup
+- Shoulder and rotator cuff activation
+- Core for sustained body tension
+- Mental preparation for longer climbs`
+      break
+    case 'hangboard':
+      sessionGuidance = `This is a HANGBOARD session. Critical focus on:
+- Extensive finger and forearm warmup (at least 5 minutes)
+- Gradual progression from open hand to half-crimp
+- Shoulder blade activation
+- DO NOT rush finger warmup - injury risk is high`
+      break
+    case 'gym':
+      sessionGuidance = `This is a GYM session (strength training). Focus on:
+- General cardio to raise heart rate
+- Dynamic stretching for all major muscle groups
+- Core activation for stability
+- ${muscleGroupText ? 'Pay special attention to warming up the target muscle groups' : 'Full body mobility'}`
+      break
+    case 'cardio':
+      sessionGuidance = `This is a CARDIO session. Focus on:
+- Gradual heart rate elevation
+- Joint mobility (ankles, knees, hips)
+- Light dynamic stretching
+- Keep it brief, save energy for main workout`
+      break
+    case 'hiit':
+      sessionGuidance = `This is a HIIT session. Focus on:
+- Cardio to elevate heart rate
+- Dynamic full-body movements
+- Core activation for stability
+- Prepare for explosive movements`
+      break
+    case 'crossfit':
+      sessionGuidance = `This is a CROSSFIT session. Focus on:
+- Thorough full-body warmup
+- Shoulder and hip mobility
+- Core and lower back preparation
+- Prepare for varied, intense movements`
+      break
+    default:
+      sessionGuidance = 'General athletic warmup'
+  }
+
+  return `Generate a unique climbing warmup routine. VARIATION SEED: ${randomSeed}
+
+SESSION TYPE: ${sessionType}${subTypeText}
+${muscleGroupText}
+
+${sessionGuidance}
 
 Recent activity (last 7 days):
 ${formatRecentSessions(context.lastSessions)}
 
 Today is ${context.currentDay}.
-Climbing schedule: ${context.scheduledClimbing.join(', ')}
+
+EXERCISE POOLS TO SELECT FROM (pick from these to ensure variety):
+Cardio options: ${cardioSample.join(', ')}
+Upper body activation: ${upperSample.join(', ')}
+Finger prep: ${fingerSample.join(', ')}
+Core activation: ${coreSample.join(', ')}
+Lower body/hip mobility: ${lowerSample.join(', ')}
+Climbing-specific: ${climbingSample.join(', ')}
 
 Requirements:
-- 10-15 minutes total
+- 12-18 minutes total (structure depends on session type)
 - Progress from general to specific
-- Include finger/shoulder prep for climbing
-- Consider recovery needs based on recent sessions
-- Format as a simple numbered list with duration per item
-- Keep descriptions concise (one line each)
+- For climbing sessions: MUST include substantial core and lower body work
+- For ${sessionType}: Follow the session guidance above
+- Select exercises from the pools above for variety
+- Mix it up! Don't use the same exercises every time
+- Consider what muscles need most prep for this specific session type
 
-IMPORTANT: Return plain text only. No markdown formatting, no headers, no bold text, no asterisks, no special characters. Just simple numbered lines like:
+IMPORTANT: Return plain text only. No markdown formatting, no headers, no bold text, no asterisks. Just numbered lines like:
 1. Exercise name (2 min)
 2. Another exercise (3 min)
 
+Be creative and specific. Don't be generic. Surprise me with the combination.
 Return only the warmup routine, no preamble or explanation.`
 }
 
 export async function generateWarmup(
   sessionType: Session['type'],
-  context: AIContext
+  context: AIContext,
+  boulderSubType?: string,
+  muscleGroups?: string[]
 ): Promise<string> {
-  const prompt = buildWarmupPrompt(sessionType, context)
+  const prompt = buildWarmupPrompt(sessionType, context, boulderSubType, muscleGroups)
   return callOpenRouter(prompt)
 }
 
@@ -113,14 +254,13 @@ function buildCooldownPrompt(
     ? `\nExercises performed: ${exercises.join(', ')}`
     : ''
 
-  return `Generate a cooldown/stretching routine after a ${sessionType} climbing session.
+  return `Generate a cooldown/stretching routine after a ${sessionType} session.
 ${muscleGroupsText}${exercisesText}
 
 Recent activity (last 7 days):
 ${formatRecentSessions(context.lastSessions)}
 
 Today is ${context.currentDay}.
-Climbing schedule: ${context.scheduledClimbing.join(', ')}
 
 Requirements:
 - 10-15 minutes total
@@ -152,7 +292,10 @@ export interface DaysSinceByType {
   boulder: number | null
   lead: number | null
   hangboard: number | null
-  supplementary: number | null
+  gym: number | null
+  cardio: number | null
+  hiit: number | null
+  crossfit: number | null
 }
 
 export interface TodayOption {
@@ -174,6 +317,15 @@ Fixed climbing schedule:
 - Wednesday: Bouldering
 - Saturday: Lead climbing
 
+Session types available:
+- boulder (with sub-types: problems, circuits, campus board, intervals)
+- lead
+- hangboard
+- gym (strength training)
+- cardio
+- hiit
+- crossfit
+
 Days since last session by type:
 ${daysSinceText}
 
@@ -188,7 +340,7 @@ Suggest exactly 3 training options for today:
 For each option:
 - Consider if today is a scheduled climbing day
 - Factor in recovery needs based on days since last sessions
-- On rest days, suggest supplementary or recovery work
+- On non-climbing days, suggest gym, cardio, HIIT, or crossfit
 - Be specific about what to do
 
 Return as JSON with this exact structure:
@@ -251,38 +403,9 @@ export async function generateTodayOptions(
   }
 }
 
-function buildProteinPrompt(context: AIContext): string {
-  return `Based on this climbing activity:
-
-Recent sessions:
-${formatRecentSessions(context.lastSessions)}
-
-Today is ${context.currentDay}.
-Climbing schedule: ${context.scheduledClimbing.join(', ')}
-
-Calculate a protein target for today and suggest high-protein vegan meal ideas.
-
-Return as JSON:
-{
-  "targetGrams": number,
-  "reasoning": "brief explanation",
-  "mealIdeas": ["idea1", "idea2", "idea3"]
-}`
-}
-
-export async function generateProteinTarget(context: AIContext): Promise<{
-  targetGrams: number
-  reasoning: string
-  mealIdeas: string[]
-}> {
-  const prompt = buildProteinPrompt(context)
-  const response = await callOpenRouter(prompt, { json: true })
-  return JSON.parse(response)
-}
-
 export function buildAIContext(
   lastSessions: Session[],
-  todayNutrition: DailyNutrition | null
+  _unused: null
 ): AIContext {
   const days = [
     'Sunday',
@@ -297,7 +420,6 @@ export function buildAIContext(
 
   return {
     lastSessions,
-    todayNutrition,
     currentDay,
     scheduledClimbing: [
       'Monday: boulder',

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { generateCooldown, buildAIContext } from '../services/ai'
 import { useSessionHistory } from '../hooks/useSessionHistory'
-import { useTodayNutrition } from '../hooks/useNutrition'
+import { sessionTypes } from '../data/exercises'
 import type { Session } from '../services/db'
 
 interface CooldownGeneratorProps {
@@ -26,7 +26,6 @@ export default function CooldownGenerator({
   const [error, setError] = useState<string | null>(null)
 
   const lastSessions = useSessionHistory(7)
-  const todayNutrition = useTodayNutrition()
 
   useEffect(() => {
     if (savedCooldown) {
@@ -39,7 +38,7 @@ export default function CooldownGenerator({
     setError(null)
 
     try {
-      const context = buildAIContext(lastSessions, todayNutrition)
+      const context = buildAIContext(lastSessions, null)
       const result = await generateCooldown(sessionType, context, muscleGroups, exercises)
       setCooldown(result)
       onCooldownGenerated?.(result)
@@ -50,11 +49,9 @@ export default function CooldownGenerator({
     }
   }
 
-  const sessionTypeLabels: Record<Session['type'], string> = {
-    boulder: 'Bouldering',
-    lead: 'Lead Climbing',
-    hangboard: 'Hangboard',
-    supplementary: 'Supplementary'
+  const getSessionLabel = () => {
+    const type = sessionTypes.find(t => t.value === sessionType)
+    return type?.label || sessionType
   }
 
   const hasMuscleGroups = muscleGroups && muscleGroups.length > 0
@@ -66,7 +63,7 @@ export default function CooldownGenerator({
           <p className="text-gray-300 mb-4">
             Generate an AI-powered cooldown routine tailored for your{' '}
             <span className="font-semibold text-indigo-400">
-              {sessionTypeLabels[sessionType]}
+              {getSessionLabel()}
             </span>{' '}
             session to aid recovery.
           </p>

@@ -7,27 +7,26 @@ import {
   type DaysSinceByType
 } from '../services/ai'
 import { useSessionHistory } from '../hooks/useSessionHistory'
-import { useTodayNutrition } from '../hooks/useNutrition'
 
 interface TodayOptionsProps {
   daysSince: DaysSinceByType
+  hasSessionToday: boolean
 }
 
-export default function TodayOptions({ daysSince }: TodayOptionsProps) {
+export default function TodayOptions({ daysSince, hasSessionToday }: TodayOptionsProps) {
   const navigate = useNavigate()
   const [options, setOptions] = useState<TodayOption[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const lastSessions = useSessionHistory(7)
-  const todayNutrition = useTodayNutrition()
 
   const handleGenerate = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const context = buildAIContext(lastSessions, todayNutrition)
+      const context = buildAIContext(lastSessions, null)
       console.log('Generating options with context:', context, 'daysSince:', daysSince)
       const result = await generateTodayOptions(context, daysSince)
       console.log('Generated options:', result)
@@ -65,6 +64,20 @@ export default function TodayOptions({ daysSince }: TodayOptionsProps) {
   const handleOptionClick = (_option: TodayOption) => {
     // Navigate to log session - could pre-populate based on option in future
     navigate('/log')
+  }
+
+  // Show "already trained" message if session logged today
+  if (hasSessionToday && !options) {
+    return (
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-3">What Should I Do Today?</h2>
+        <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 text-center">
+          <span className="text-3xl mb-2 block">✅</span>
+          <p className="text-green-400 font-medium">Already trained today!</p>
+          <p className="text-gray-400 text-sm mt-1">Nice work. Rest up for tomorrow.</p>
+        </div>
+      </div>
+    )
   }
 
   if (!options && !loading) {

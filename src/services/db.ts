@@ -11,7 +11,8 @@ export interface Exercise {
 export interface Session {
   id?: number
   date: string
-  type: 'boulder' | 'lead' | 'hangboard' | 'supplementary'
+  type: 'boulder' | 'lead' | 'hangboard' | 'gym' | 'cardio' | 'hiit' | 'crossfit'
+  boulderSubType?: 'problems' | 'circuits' | 'campus' | 'intervals'
   exercises: Exercise[]
   durationMinutes: number
   notes?: string
@@ -20,30 +21,19 @@ export interface Session {
   createdAt: number
 }
 
-export interface Meal {
-  id: string
-  description: string
-  proteinGrams: number
-  isVegan: boolean
-  timestamp: number
-}
-
-export interface DailyNutrition {
-  id?: number
-  date: string
-  meals: Meal[]
-  proteinTotal: number
-  veganPoints: number
-}
-
 const db = new Dexie('ClimbingTrainingDB') as Dexie & {
   sessions: EntityTable<Session, 'id'>
-  dailyNutrition: EntityTable<DailyNutrition, 'id'>
 }
 
 db.version(1).stores({
   sessions: '++id, date, type, createdAt',
   dailyNutrition: '++id, &date'
+})
+
+// Version 2: Remove dailyNutrition, add boulderSubType support
+db.version(2).stores({
+  sessions: '++id, date, type, createdAt',
+  dailyNutrition: null // Delete the table
 })
 
 export { db }

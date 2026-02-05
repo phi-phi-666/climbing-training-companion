@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { useRecentSessions, useDaysSinceLastSession } from '../hooks/useSessionHistory'
-import { useTodayNutrition } from '../hooks/useNutrition'
-import { sessionTypes } from '../data/exercises'
+import { useRecentSessions, useDaysSinceLastSession, useHasSessionToday } from '../hooks/useSessionHistory'
+import { sessionTypes, boulderSubTypes } from '../data/exercises'
 import Modal from './ui/Modal'
 import CooldownGenerator from './CooldownGenerator'
 import TodayOptions from './TodayOptions'
@@ -10,7 +9,7 @@ import type { DaysSinceByType } from '../services/ai'
 
 export default function Dashboard() {
   const recentSessions = useRecentSessions(5)
-  const todayNutrition = useTodayNutrition()
+  const hasSessionToday = useHasSessionToday()
   const [showCooldown, setShowCooldown] = useState(false)
   const [cooldownSessionType, setCooldownSessionType] = useState<Session['type']>('boulder')
 
@@ -18,18 +17,34 @@ export default function Dashboard() {
   const daysSinceBoulder = useDaysSinceLastSession('boulder')
   const daysSinceLead = useDaysSinceLastSession('lead')
   const daysSinceHangboard = useDaysSinceLastSession('hangboard')
-  const daysSinceSupplementary = useDaysSinceLastSession('supplementary')
+  const daysSinceGym = useDaysSinceLastSession('gym')
+  const daysSinceCardio = useDaysSinceLastSession('cardio')
+  const daysSinceHiit = useDaysSinceLastSession('hiit')
+  const daysSinceCrossfit = useDaysSinceLastSession('crossfit')
 
   const daysSince: DaysSinceByType = {
     boulder: daysSinceBoulder,
     lead: daysSinceLead,
     hangboard: daysSinceHangboard,
-    supplementary: daysSinceSupplementary
+    gym: daysSinceGym,
+    cardio: daysSinceCardio,
+    hiit: daysSinceHiit,
+    crossfit: daysSinceCrossfit
   }
 
   const handleQuickCooldown = (type: Session['type']) => {
     setCooldownSessionType(type)
     setShowCooldown(true)
+  }
+
+  // Get display label for session including boulder sub-type
+  const getSessionDisplayLabel = (session: Session) => {
+    if (session.type === 'boulder' && session.boulderSubType) {
+      const subType = boulderSubTypes.find(t => t.value === session.boulderSubType)
+      return `Boulder - ${subType?.label || session.boulderSubType}`
+    }
+    const type = sessionTypes.find(t => t.value === session.type)
+    return type?.label || session.type
   }
 
   return (
@@ -45,7 +60,7 @@ export default function Dashboard() {
         </p>
       </header>
 
-      <TodayOptions daysSince={daysSince} />
+      <TodayOptions daysSince={daysSince} hasSessionToday={hasSessionToday} />
 
       <section className="card">
         <h2 className="text-lg font-semibold mb-4">Days Since Last Session</h2>
@@ -74,28 +89,6 @@ export default function Dashboard() {
       </section>
 
       <section className="card">
-        <h2 className="text-lg font-semibold mb-4">Today's Nutrition</h2>
-        {todayNutrition ? (
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span>Protein</span>
-              <span className="font-mono">{todayNutrition.proteinTotal}g</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Points</span>
-              <span className="font-mono text-green-400">{todayNutrition.veganPoints}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Meals logged</span>
-              <span className="font-mono">{todayNutrition.meals.length}</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-gray-400 text-sm">No meals logged today</p>
-        )}
-      </section>
-
-      <section className="card">
         <h2 className="text-lg font-semibold mb-4">Recent Sessions</h2>
         {recentSessions.length > 0 ? (
           <ul className="space-y-2">
@@ -105,7 +98,7 @@ export default function Dashboard() {
                   <span className="mr-2">
                     {sessionTypes.find((t) => t.value === session.type)?.emoji}
                   </span>
-                  <span className="capitalize">{session.type}</span>
+                  <span>{getSessionDisplayLabel(session)}</span>
                 </div>
                 <div className="text-gray-400 text-sm">
                   {new Date(session.date).toLocaleDateString('en-US', {
@@ -140,7 +133,7 @@ function DaysSinceCard({
   label,
   emoji
 }: {
-  type: 'boulder' | 'lead' | 'hangboard' | 'supplementary'
+  type: Session['type']
   label: string
   emoji: string
 }) {

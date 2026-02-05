@@ -17,39 +17,110 @@ export const exercisesByGroup: Record<MuscleGroup, string[]> = {
     'Hangboard repeaters',
     'Hangboard max hangs',
     'Finger curls',
-    'Rice bucket'
+    'Rice bucket',
+    'No-hang device',
+    'Pinch block training',
+    'Open hand hangs',
+    'Half crimp hangs'
   ],
-  forearms: ['Wrist curls', 'Reverse wrist curls', 'Pronation/supination'],
+  forearms: [
+    'Wrist curls',
+    'Reverse wrist curls',
+    'Pronation/supination',
+    'Hammer curls',
+    'Farmers carry',
+    'Wrist roller'
+  ],
   shoulders: [
     'Face pulls',
     'External rotation',
     'YTWs',
-    'Shoulder dislocates'
+    'Shoulder dislocates',
+    'Lateral raises',
+    'Front raises',
+    'Cuban press',
+    'Band pull-aparts'
   ],
-  back: ['Pull-ups', 'Rows', 'Lat pulldowns', 'Scapular pull-ups'],
+  back: [
+    'Pull-ups',
+    'Rows',
+    'Lat pulldowns',
+    'Scapular pull-ups',
+    'Inverted rows',
+    'One-arm rows',
+    'Deadlifts',
+    'Bent-over rows'
+  ],
   core: [
     'Hanging leg raises',
     'Planks',
     'Dead bugs',
     'Pallof press',
-    'Ab wheel'
+    'Ab wheel',
+    'L-sits',
+    'Dragon flags',
+    'Hollow body holds',
+    'Russian twists',
+    'Windshield wipers'
   ],
-  chest: ['Push-ups', 'Dips', 'Bench press', 'Chest flies'],
-  triceps: ['Tricep dips', 'Tricep pushdowns', 'Overhead extension'],
-  legs: ['Squats', 'Lunges', 'Pistol squats', 'Calf raises'],
+  chest: [
+    'Push-ups',
+    'Dips',
+    'Bench press',
+    'Chest flies',
+    'Diamond push-ups',
+    'Incline push-ups',
+    'Cable crossovers',
+    'Archer push-ups'
+  ],
+  triceps: [
+    'Tricep dips',
+    'Tricep pushdowns',
+    'Overhead extension',
+    'Close-grip bench press',
+    'Skull crushers',
+    'Diamond push-ups'
+  ],
+  legs: [
+    'Squats',
+    'Lunges',
+    'Pistol squats',
+    'Calf raises',
+    'Romanian deadlifts',
+    'Bulgarian split squats',
+    'Box jumps',
+    'Step-ups'
+  ],
   mobility: [
     'Hip 90/90',
     'Shoulder stretches',
     'Thoracic rotation',
-    'Wrist stretches'
+    'Wrist stretches',
+    'Frog stretch',
+    'Pigeon pose',
+    'Cat-cow',
+    'World\'s greatest stretch'
   ]
 }
 
+// Bouldering sub-types
+export const boulderSubTypes = [
+  { value: 'problems', label: 'Problems', emoji: '🪨' },
+  { value: 'circuits', label: 'Circuits', emoji: '🔄' },
+  { value: 'campus', label: 'Campus Board', emoji: '🪜' },
+  { value: 'intervals', label: 'Intervals', emoji: '⏱️' }
+] as const
+
+export type BoulderSubType = (typeof boulderSubTypes)[number]['value']
+
 export const sessionTypes = [
-  { value: 'boulder', label: 'Bouldering', emoji: '🪨' },
-  { value: 'lead', label: 'Lead Climbing', emoji: '🧗' },
-  { value: 'hangboard', label: 'Hangboard', emoji: '🤏' },
-  { value: 'supplementary', label: 'Supplementary', emoji: '💪' }
+  { value: 'boulder', label: 'Bouldering', emoji: '🪨', hasSubTypes: true },
+  { value: 'lead', label: 'Lead Climbing', emoji: '🧗', hasSubTypes: false },
+  { value: 'hangboard', label: 'Hangboard', emoji: '🤏', hasSubTypes: false },
+  { value: 'gym', label: 'Gym', emoji: '💪', hasSubTypes: false },
+  { value: 'cardio', label: 'Cardio', emoji: '🏃', hasSubTypes: false },
+  { value: 'hiit', label: 'HIIT', emoji: '🔥', hasSubTypes: false },
+  { value: 'crossfit', label: 'CrossFit', emoji: '🏋️', hasSubTypes: false }
 ] as const
 
 export type SessionType = (typeof sessionTypes)[number]['value']

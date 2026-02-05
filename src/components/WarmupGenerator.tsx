@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { generateWarmup, buildAIContext } from '../services/ai'
 import { useSessionHistory } from '../hooks/useSessionHistory'
-import { useTodayNutrition } from '../hooks/useNutrition'
+import { sessionTypes, boulderSubTypes } from '../data/exercises'
 import type { Session } from '../services/db'
+import type { BoulderSubType } from '../data/exercises'
 
 interface WarmupGeneratorProps {
   sessionType: Session['type']
+  boulderSubType?: BoulderSubType
   onClose: () => void
   onWarmupGenerated?: (warmup: string) => void
   savedWarmup?: string | null
@@ -13,6 +15,7 @@ interface WarmupGeneratorProps {
 
 export default function WarmupGenerator({
   sessionType,
+  boulderSubType,
   onClose,
   onWarmupGenerated,
   savedWarmup
@@ -22,7 +25,6 @@ export default function WarmupGenerator({
   const [error, setError] = useState<string | null>(null)
 
   const lastSessions = useSessionHistory(7)
-  const todayNutrition = useTodayNutrition()
 
   useEffect(() => {
     if (savedWarmup) {
@@ -35,8 +37,8 @@ export default function WarmupGenerator({
     setError(null)
 
     try {
-      const context = buildAIContext(lastSessions, todayNutrition)
-      const result = await generateWarmup(sessionType, context)
+      const context = buildAIContext(lastSessions, null)
+      const result = await generateWarmup(sessionType, context, boulderSubType)
       setWarmup(result)
       onWarmupGenerated?.(result)
     } catch (err) {
@@ -46,11 +48,13 @@ export default function WarmupGenerator({
     }
   }
 
-  const sessionTypeLabels: Record<Session['type'], string> = {
-    boulder: 'Bouldering',
-    lead: 'Lead Climbing',
-    hangboard: 'Hangboard',
-    supplementary: 'Supplementary'
+  const getSessionLabel = () => {
+    const type = sessionTypes.find(t => t.value === sessionType)
+    if (sessionType === 'boulder' && boulderSubType) {
+      const subType = boulderSubTypes.find(t => t.value === boulderSubType)
+      return `${type?.label} - ${subType?.label}`
+    }
+    return type?.label || sessionType
   }
 
   return (
@@ -60,7 +64,7 @@ export default function WarmupGenerator({
           <p className="text-gray-300 mb-4">
             Generate an AI-powered warmup routine tailored for your{' '}
             <span className="font-semibold text-indigo-400">
-              {sessionTypeLabels[sessionType]}
+              {getSessionLabel()}
             </span>{' '}
             session based on your recent training history.
           </p>

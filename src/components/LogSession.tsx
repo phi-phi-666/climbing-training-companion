@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { addSession, type Exercise } from '../hooks/useSessionHistory'
 import {
   sessionTypes,
+  boulderSubTypes,
   muscleGroups,
   exercisesByGroup,
   type MuscleGroup,
-  type SessionType
+  type SessionType,
+  type BoulderSubType
 } from '../data/exercises'
 import Modal from './ui/Modal'
 import WarmupGenerator from './WarmupGenerator'
@@ -40,6 +42,7 @@ export default function LogSession() {
   const navigate = useNavigate()
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0])
   const [sessionType, setSessionType] = useState<SessionType>('boulder')
+  const [boulderSubType, setBoulderSubType] = useState<BoulderSubType>('problems')
   const [selectedGroups, setSelectedGroups] = useState<MuscleGroup[]>([])
   const [selectedExercises, setSelectedExercises] = useState<string[]>([])
   const [duration, setDuration] = useState(60)
@@ -83,6 +86,7 @@ export default function LogSession() {
     await addSession({
       date: sessionDate,
       type: sessionType,
+      boulderSubType: sessionType === 'boulder' ? boulderSubType : undefined,
       exercises,
       durationMinutes: duration,
       notes: notes || undefined,
@@ -137,6 +141,29 @@ export default function LogSession() {
           ))}
         </div>
       </section>
+
+      {/* Bouldering Sub-Types */}
+      {sessionType === 'boulder' && (
+        <section className="card">
+          <h2 className="text-lg font-semibold mb-3">Bouldering Type</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {boulderSubTypes.map((subType) => (
+              <button
+                key={subType.value}
+                onClick={() => setBoulderSubType(subType.value)}
+                className={`p-3 rounded-lg text-center transition-colors ${
+                  boulderSubType === subType.value
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <div className="text-xl mb-1">{subType.emoji}</div>
+                <div className="text-sm">{subType.label}</div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="card">
         <button
@@ -252,6 +279,7 @@ export default function LogSession() {
       >
         <WarmupGenerator
           sessionType={sessionType}
+          boulderSubType={sessionType === 'boulder' ? boulderSubType : undefined}
           onClose={() => setShowWarmup(false)}
           onWarmupGenerated={setWarmup}
           savedWarmup={warmup}

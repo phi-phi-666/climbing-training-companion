@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import Dashboard from './components/Dashboard'
 import LogSession from './components/LogSession'
 import History from './components/History'
-import LogMeal from './components/LogMeal'
 
 function App() {
   return (
@@ -12,7 +11,6 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/log" element={<LogSession />} />
-            <Route path="/meal" element={<LogMeal />} />
             <Route path="/history" element={<History />} />
           </Routes>
         </main>
@@ -40,17 +38,6 @@ function App() {
             >
               <span className="text-xl mb-1">➕</span>
               <span>Log</span>
-            </NavLink>
-            <NavLink
-              to="/meal"
-              className={({ isActive }) =>
-                `flex flex-col items-center py-3 px-4 text-sm ${
-                  isActive ? 'text-indigo-400' : 'text-gray-400'
-                }`
-              }
-            >
-              <span className="text-xl mb-1">🍽️</span>
-              <span>Meal</span>
             </NavLink>
             <NavLink
               to="/history"
