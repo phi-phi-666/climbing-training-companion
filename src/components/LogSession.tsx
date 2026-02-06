@@ -18,6 +18,7 @@ import {
   type RecoveryType
 } from '../data/exercises'
 import Modal from './ui/Modal'
+import Accordion from './ui/Accordion'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
 import type { TodayOption } from '../services/ai'
@@ -28,13 +29,15 @@ import {
   Flame,
   Bike,
   Sparkles,
-  ChevronRight,
   Footprints,
   Rows3,
   CircleDot,
   Zap,
   StretchHorizontal,
   Heart,
+  Clock,
+  Dumbbell as ExerciseIcon,
+  StickyNote,
   type LucideIcon
 } from 'lucide-react'
 
@@ -224,6 +227,13 @@ export default function LogSession() {
   const showMobilityExercises = sessionType === 'mobility'
   const showHangboardExercises = sessionType === 'hangboard'
 
+  // Count selected exercises for badge
+  const exerciseCount = showMobilityExercises
+    ? selectedMobilityExercises.length
+    : showHangboardExercises
+    ? selectedHangboardExercises.length
+    : selectedExercises.length
+
   const handleSave = async () => {
     if (saving) return
     setSaving(true)
@@ -278,230 +288,103 @@ export default function LogSession() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="py-4">
-        <h1 className="text-2xl font-bold">Log Session</h1>
-        {prefill && (
-          <p className="text-rose-400 text-sm mt-1">Pre-filled from Today's Plan</p>
-        )}
-      </header>
+    <div className="space-y-3 pt-2">
+      {/* Prefill indicator */}
+      {prefill && (
+        <div className="text-center text-rose-400 text-sm py-1">
+          Pre-filled from Today's Plan
+        </div>
+      )}
 
-      <section className="card">
-        <h2 className="text-lg font-semibold mb-3">Date</h2>
-        <div className="flex flex-wrap gap-2">
-          {dateOptions.map((option) => (
+      {/* Date selector - compact horizontal scroll */}
+      <div className="card py-3">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          {dateOptions.slice(0, 5).map((option) => (
             <button
               key={option.value}
               onClick={() => setSessionDate(option.value)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${
                 sessionDate === option.value
-                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
-                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                  ? 'bg-rose-500 text-white'
+                  : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
               }`}
             >
               {option.label}
             </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold mb-3">Session Type</h2>
-        <div className="grid grid-cols-2 gap-2">
+      {/* Session Type - 4x2 compact grid */}
+      <div className="card">
+        <div className="grid grid-cols-4 gap-1.5">
           {sessionTypes.map((type) => {
             const Icon = sessionIcons[type.value]
+            const isSelected = sessionType === type.value
             return (
               <button
                 key={type.value}
                 onClick={() => setSessionType(type.value)}
-                className={`p-4 rounded-xl text-center transition-all ${
-                  sessionType === type.value
+                className={`p-2.5 rounded-xl text-center transition-all ${
+                  isSelected
                     ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                    : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
                 }`}
               >
-                <Icon size={28} strokeWidth={1.5} className="mx-auto mb-2" />
-                <div className="text-sm font-medium">{type.label}</div>
+                <Icon size={22} strokeWidth={1.5} className="mx-auto mb-1" />
+                <div className="text-[10px] font-medium tracking-wide">{type.label}</div>
               </button>
             )
           })}
         </div>
-      </section>
 
-      {/* Bouldering Sub-Types */}
-      {sessionType === 'boulder' && (
-        <section className="card">
-          <h2 className="text-lg font-semibold mb-3">Bouldering Type</h2>
-          <div className="grid grid-cols-2 gap-2">
+        {/* Boulder sub-types inline */}
+        {sessionType === 'boulder' && (
+          <div className="flex gap-1.5 mt-3 pt-3 border-t border-violet-900/20">
             {boulderSubTypes.map((subType) => (
               <button
                 key={subType.value}
                 onClick={() => setBoulderSubType(subType.value)}
-                className={`p-3 rounded-xl text-center transition-all ${
+                className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
                   boulderSubType === subType.value
-                    ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
                 }`}
               >
-                <div className="text-sm font-medium">{subType.label}</div>
+                {subType.label}
               </button>
             ))}
           </div>
-        </section>
-      )}
+        )}
 
-      {/* Cardio Sub-Types */}
-      {sessionType === 'cardio' && (
-        <section className="card">
-          <h2 className="text-lg font-semibold mb-3">Cardio Type</h2>
-          <div className="grid grid-cols-2 gap-2">
+        {/* Cardio sub-types inline */}
+        {sessionType === 'cardio' && (
+          <div className="flex gap-1.5 mt-3 pt-3 border-t border-violet-900/20">
             {cardioSubTypes.map((subType) => {
               const Icon = cardioIcons[subType.value]
               return (
                 <button
                   key={subType.value}
                   onClick={() => setCardioSubType(subType.value)}
-                  className={`p-3 rounded-xl text-center transition-all ${
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-1 ${
                     cardioSubType === subType.value
-                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20'
-                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
                   }`}
                 >
-                  <Icon size={24} strokeWidth={1.5} className="mx-auto mb-1" />
-                  <div className="text-sm font-medium">{subType.label}</div>
+                  <Icon size={16} strokeWidth={1.5} />
+                  {subType.label}
                 </button>
               )
             })}
           </div>
-        </section>
-      )}
+        )}
+      </div>
 
-      {/* Hangboard Exercises */}
-      {showHangboardExercises && (
-        <section className="card">
-          <h2 className="text-lg font-semibold mb-3">Hangboard Exercises</h2>
-          <div className="flex flex-wrap gap-2">
-            {hangboardExercises.map((exercise) => (
-              <button
-                key={exercise}
-                onClick={() => toggleHangboardExercise(exercise)}
-                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                  selectedHangboardExercises.includes(exercise)
-                    ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
-                }`}
-              >
-                {exercise}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Mobility Exercises */}
-      {showMobilityExercises && (
-        <section className="card">
-          <h2 className="text-lg font-semibold mb-3">Exercises</h2>
-          <div className="flex flex-wrap gap-2">
-            {mobilityExercises.map((exercise) => (
-              <button
-                key={exercise}
-                onClick={() => toggleMobilityExercise(exercise)}
-                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                  selectedMobilityExercises.includes(exercise)
-                    ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
-                }`}
-              >
-                {exercise}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="card">
-        <button
-          onClick={() => setShowWarmup(true)}
-          className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-rose-600 to-rose-500 rounded-xl hover:from-rose-500 hover:to-rose-400 transition-all shadow-lg shadow-rose-500/20"
-        >
-          <div className="flex items-center gap-3">
-            <Sparkles size={24} strokeWidth={1.5} />
-            <div className="text-left">
-              <div className="font-semibold">Generate AI Warmup</div>
-              <div className="text-sm text-rose-200">
-                Personalized for your session
-              </div>
-            </div>
-          </div>
-          <ChevronRight size={24} strokeWidth={1.5} />
-        </button>
-        <button
-          onClick={() => setShowCooldown(true)}
-          className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-accent-600 to-accent-500 rounded-xl hover:from-accent-500 hover:to-accent-400 transition-all mt-3 shadow-lg shadow-accent-500/20"
-        >
-          <div className="flex items-center gap-3">
-            <StretchHorizontal size={24} strokeWidth={1.5} />
-            <div className="text-left">
-              <div className="font-semibold">Generate AI Cooldown</div>
-              <div className="text-sm text-accent-200">
-                Stretches for recovery
-              </div>
-            </div>
-          </div>
-          <ChevronRight size={24} strokeWidth={1.5} />
-        </button>
-      </section>
-
-      {/* Muscle Groups - only for gym, crossfit, hiit */}
-      {showMuscleGroups && (
-        <section className="card">
-          <h2 className="text-lg font-semibold mb-3">Muscle Groups</h2>
-          <div className="flex flex-wrap gap-2">
-            {muscleGroups.map((group) => (
-              <button
-                key={group}
-                onClick={() => toggleGroup(group)}
-                className={`px-3 py-2 rounded-xl text-sm capitalize font-medium transition-all ${
-                  selectedGroups.includes(group)
-                    ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
-                }`}
-              >
-                {group}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Exercises - only when muscle groups selected */}
-      {showMuscleGroups && availableExercises.length > 0 && (
-        <section className="card">
-          <h2 className="text-lg font-semibold mb-3">
-            Exercises {isCrossfit && <span className="text-rose-400 text-sm">(CrossFit)</span>}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {availableExercises.map((exercise) => (
-              <button
-                key={exercise}
-                onClick={() => toggleExercise(exercise)}
-                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                  selectedExercises.includes(exercise)
-                    ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
-                }`}
-              >
-                {exercise}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="card">
-        <h2 className="text-lg font-semibold mb-3">Duration (minutes)</h2>
-        <div className="flex items-center gap-4">
+      {/* Duration - compact inline */}
+      <div className="card py-3">
+        <div className="flex items-center gap-3">
+          <Clock size={18} className="text-zinc-500" />
           <input
             type="range"
             min="15"
@@ -509,50 +392,177 @@ export default function LogSession() {
             step="15"
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
-            className="flex-1 accent-rose-500"
+            className="flex-1 accent-rose-500 h-2"
           />
-          <span className="font-mono text-xl w-16 text-right text-rose-400">{duration}</span>
+          <span className="font-mono text-lg w-14 text-right text-rose-400 font-semibold">{duration}<span className="text-xs text-zinc-500 ml-0.5">m</span></span>
         </div>
-      </section>
+      </div>
 
-      {/* Recovery Section */}
-      <section className="card border-purple-800/50 bg-gradient-to-br from-stone-900 to-purple-950/30">
-        <div className="flex items-center gap-2 mb-3">
-          <Heart size={20} strokeWidth={1.5} className="text-purple-400" />
-          <h2 className="text-lg font-semibold">Recovery Activities</h2>
-        </div>
-        <p className="text-stone-500 text-sm mb-3">Optional extras (logged in notes)</p>
-        <div className="flex flex-wrap gap-2">
+      {/* AI Warmup/Cooldown - compact buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowWarmup(true)}
+          className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl transition-all ${
+            warmup
+              ? 'bg-rose-600 text-white'
+              : 'bg-gradient-to-r from-rose-600 to-rose-500 text-white hover:from-rose-500 hover:to-rose-400'
+          }`}
+        >
+          <Sparkles size={18} strokeWidth={1.5} />
+          <span className="text-sm font-medium">{warmup ? 'Warmup ✓' : 'Warmup'}</span>
+        </button>
+        <button
+          onClick={() => setShowCooldown(true)}
+          className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl transition-all ${
+            cooldown
+              ? 'bg-accent-600 text-white'
+              : 'bg-gradient-to-r from-accent-600 to-accent-500 text-white hover:from-accent-500 hover:to-accent-400'
+          }`}
+        >
+          <StretchHorizontal size={18} strokeWidth={1.5} />
+          <span className="text-sm font-medium">{cooldown ? 'Cooldown ✓' : 'Cooldown'}</span>
+        </button>
+      </div>
+
+      {/* Exercises accordion - only show when relevant */}
+      {(showMuscleGroups || showMobilityExercises || showHangboardExercises) && (
+        <Accordion
+          title="EXERCISES"
+          icon={<ExerciseIcon size={16} />}
+          badge={exerciseCount > 0 ? exerciseCount : undefined}
+          defaultOpen={false}
+        >
+          {/* Hangboard Exercises */}
+          {showHangboardExercises && (
+            <div className="flex flex-wrap gap-1.5">
+              {hangboardExercises.map((exercise) => (
+                <button
+                  key={exercise}
+                  onClick={() => toggleHangboardExercise(exercise)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    selectedHangboardExercises.includes(exercise)
+                      ? 'bg-accent-500 text-white'
+                      : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                  }`}
+                >
+                  {exercise}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Mobility Exercises */}
+          {showMobilityExercises && (
+            <div className="flex flex-wrap gap-1.5">
+              {mobilityExercises.map((exercise) => (
+                <button
+                  key={exercise}
+                  onClick={() => toggleMobilityExercise(exercise)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    selectedMobilityExercises.includes(exercise)
+                      ? 'bg-accent-500 text-white'
+                      : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                  }`}
+                >
+                  {exercise}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Gym/CrossFit/HIIT - Muscle Groups then Exercises */}
+          {showMuscleGroups && (
+            <div className="space-y-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Muscle Groups</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {muscleGroups.map((group) => (
+                    <button
+                      key={group}
+                      onClick={() => toggleGroup(group)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs capitalize font-medium transition-all ${
+                        selectedGroups.includes(group)
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                      }`}
+                    >
+                      {group}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {availableExercises.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">
+                    Exercises {isCrossfit && <span className="text-rose-400">(CrossFit)</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableExercises.map((exercise) => (
+                      <button
+                        key={exercise}
+                        onClick={() => toggleExercise(exercise)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          selectedExercises.includes(exercise)
+                            ? 'bg-accent-500 text-white'
+                            : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                        }`}
+                      >
+                        {exercise}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Accordion>
+      )}
+
+      {/* Recovery accordion */}
+      <Accordion
+        title="RECOVERY"
+        icon={<Heart size={16} />}
+        badge={selectedRecovery.length > 0 ? selectedRecovery.length : undefined}
+        defaultOpen={false}
+      >
+        <div className="flex flex-wrap gap-1.5">
           {recoveryTypes.map((type) => (
             <button
               key={type.value}
               onClick={() => toggleRecovery(type.value)}
-              className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 selectedRecovery.includes(type.value)
-                  ? 'bg-purple-500 text-white shadow-md shadow-purple-500/20'
-                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700'
+                  ? 'bg-violet-500 text-white'
+                  : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
               }`}
             >
               {type.label}
             </button>
           ))}
         </div>
-      </section>
+      </Accordion>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold mb-3">Notes</h2>
+      {/* Notes accordion */}
+      <Accordion
+        title="NOTES"
+        icon={<StickyNote size={16} />}
+        badge={notes.length > 0 ? '...' : undefined}
+        defaultOpen={!!notes}
+      >
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="How did it feel? Any PRs? Sets/reps details..."
-          className="input min-h-24 resize-none"
+          placeholder="How did it feel? Any PRs?"
+          className="input min-h-20 resize-none text-sm"
         />
-      </section>
+      </Accordion>
 
+      {/* Save button - always visible */}
       <button
         onClick={handleSave}
         disabled={saving}
-        className="btn-primary w-full text-lg py-4"
+        className="btn-primary w-full py-4 font-semibold tracking-wide"
       >
         {saving ? 'Saving...' : 'Save Session'}
       </button>
@@ -560,7 +570,7 @@ export default function LogSession() {
       <Modal
         isOpen={showWarmup}
         onClose={() => setShowWarmup(false)}
-        title="AI Warmup Generator"
+        title="AI Warmup"
       >
         <WarmupGenerator
           key={`warmup-${sessionType}-${boulderSubType || 'none'}`}
@@ -575,7 +585,7 @@ export default function LogSession() {
       <Modal
         isOpen={showCooldown}
         onClose={() => setShowCooldown(false)}
-        title="AI Cooldown Generator"
+        title="AI Cooldown"
       >
         <CooldownGenerator
           key={`cooldown-${sessionType}-${boulderSubType || 'none'}`}

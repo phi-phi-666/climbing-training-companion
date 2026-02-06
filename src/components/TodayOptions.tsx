@@ -247,7 +247,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
           disabled={loading}
         >
           <Sparkles size={20} strokeWidth={1.5} />
-          <span className="font-semibold tracking-wide">Generate Today's Options</span>
+          <span className="font-semibold tracking-wide">What's Next?</span>
         </button>
       </div>
     )

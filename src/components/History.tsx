@@ -95,25 +95,26 @@ export default function History() {
   const dateOptions = getDateOptions()
 
   return (
-    <div className="space-y-6">
-      <header className="py-4">
-        <h1 className="text-2xl font-bold">History</h1>
-        <p className="text-stone-500 text-sm">Last 30 days</p>
-      </header>
+    <div className="space-y-3 pt-2">
+      {/* Summary bar */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-zinc-500 text-sm">Last 30 days</span>
+        <span className="text-zinc-400 text-sm font-medium">{sessions.length} sessions</span>
+      </div>
 
       {sessions.length === 0 ? (
-        <div className="card text-center py-8">
-          <p className="text-stone-400">No sessions recorded yet</p>
-          <p className="text-stone-500 text-sm mt-2">Start logging your training!</p>
+        <div className="card text-center py-12">
+          <p className="text-zinc-400">No sessions recorded yet</p>
+          <p className="text-zinc-500 text-sm mt-2">Start logging your training!</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {Object.entries(groupedSessions).map(([date, daySessions]) => (
             <div key={date} className="card">
-              <h2 className="text-sm font-semibold text-stone-500 mb-3">
+              <h2 className="text-xs font-medium text-zinc-500 mb-3 tracking-wide uppercase">
                 {new Date(date).toLocaleDateString('en-US', {
                   weekday: 'long',
-                  month: 'long',
+                  month: 'short',
                   day: 'numeric'
                 })}
               </h2>
@@ -126,18 +127,18 @@ export default function History() {
                   return (
                     <div
                       key={session.id}
-                      className="bg-stone-800 rounded-xl overflow-hidden border border-stone-700"
+                      className="bg-void-100 rounded-xl overflow-hidden border border-violet-900/20"
                     >
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : session.id!)}
-                        className="w-full p-4 flex items-center justify-between text-left"
+                        className="w-full p-3 flex items-center justify-between text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <Icon size={24} strokeWidth={1.5} className="text-rose-400" />
+                          <Icon size={20} strokeWidth={1.5} className="text-rose-400" />
                           <div>
-                            <div className="font-medium">{getSessionLabel(session)}</div>
-                            <div className="text-sm text-stone-500">
-                              {session.durationMinutes} min
+                            <div className="font-medium text-sm">{getSessionLabel(session)}</div>
+                            <div className="text-xs text-zinc-500">
+                              {session.durationMinutes}m
                               {session.exercises.length > 0 && (
                                 <span> · {session.exercises.length} exercises</span>
                               )}
@@ -145,30 +146,30 @@ export default function History() {
                           </div>
                         </div>
                         {isExpanded ? (
-                          <ChevronUp size={20} strokeWidth={1.5} className="text-stone-500" />
+                          <ChevronUp size={18} strokeWidth={1.5} className="text-zinc-500" />
                         ) : (
-                          <ChevronDown size={20} strokeWidth={1.5} className="text-stone-500" />
+                          <ChevronDown size={18} strokeWidth={1.5} className="text-zinc-500" />
                         )}
                       </button>
 
                       {isExpanded && (
-                        <div className="px-4 pb-4 border-t border-stone-700 pt-4">
+                        <div className="px-3 pb-3 border-t border-violet-900/20 pt-3 space-y-3">
                           {/* Date Edit Section */}
-                          <div className="mb-4">
-                            <div className="text-xs text-stone-500 mb-2 font-medium flex items-center gap-1">
-                              <CalendarDays size={12} />
+                          <div>
+                            <div className="text-[10px] text-zinc-500 mb-1.5 font-medium uppercase tracking-wider flex items-center gap-1">
+                              <CalendarDays size={10} />
                               Date
                             </div>
                             {isEditingDate ? (
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex flex-wrap gap-1.5">
                                 {dateOptions.map((option) => (
                                   <button
                                     key={option.value}
                                     onClick={() => handleDateChange(session.id!, option.value)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                    className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
                                       session.date === option.value
                                         ? 'bg-rose-500 text-white'
-                                        : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+                                        : 'bg-void-50 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
                                     }`}
                                   >
                                     {option.label}
@@ -176,7 +177,7 @@ export default function History() {
                                 ))}
                                 <button
                                   onClick={() => setEditingDateId(null)}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-stone-600 text-stone-300 hover:bg-stone-500"
+                                  className="px-2 py-1 rounded-lg text-xs font-medium bg-void-50 text-zinc-400 hover:text-zinc-200 border border-violet-900/20"
                                 >
                                   Cancel
                                 </button>
@@ -184,26 +185,26 @@ export default function History() {
                             ) : (
                               <button
                                 onClick={() => setEditingDateId(session.id!)}
-                                className="text-sm text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1"
+                                className="text-xs text-rose-400 hover:text-rose-300 font-medium"
                               >
                                 {new Date(session.date).toLocaleDateString('en-US', {
                                   weekday: 'short',
                                   month: 'short',
                                   day: 'numeric'
                                 })}
-                                <span className="text-xs text-stone-500">(tap to change)</span>
+                                <span className="text-zinc-600 ml-1">(tap to change)</span>
                               </button>
                             )}
                           </div>
 
                           {session.exercises.length > 0 && (
-                            <div className="mb-4">
-                              <div className="text-xs text-stone-500 mb-2 font-medium">Exercises</div>
+                            <div>
+                              <div className="text-[10px] text-zinc-500 mb-1.5 font-medium uppercase tracking-wider">Exercises</div>
                               <div className="flex flex-wrap gap-1">
                                 {session.exercises.map((ex, i) => (
                                   <span
                                     key={i}
-                                    className="bg-stone-700 px-2 py-1 rounded-lg text-xs"
+                                    className="bg-void-50 px-2 py-1 rounded-lg text-xs text-zinc-300 border border-violet-900/10"
                                   >
                                     {ex.name}
                                   </span>
@@ -212,11 +213,11 @@ export default function History() {
                             </div>
                           )}
                           {session.warmup && (
-                            <div className="mb-4">
-                              <div className="text-xs text-stone-500 mb-2 font-medium">Warmup</div>
-                              <div className="bg-rose-950/30 border border-rose-900/30 rounded-xl p-3 text-sm leading-relaxed text-stone-300">
+                            <div>
+                              <div className="text-[10px] text-zinc-500 mb-1.5 font-medium uppercase tracking-wider">Warmup</div>
+                              <div className="bg-rose-950/20 border border-rose-900/20 rounded-xl p-2.5 text-xs leading-relaxed text-zinc-300">
                                 {session.warmup.split('\n').map((line, i) => (
-                                  <p key={i} className={line.trim() ? 'mb-1' : ''}>
+                                  <p key={i} className={line.trim() ? 'mb-0.5' : ''}>
                                     {line}
                                   </p>
                                 ))}
@@ -224,11 +225,11 @@ export default function History() {
                             </div>
                           )}
                           {session.cooldown && (
-                            <div className="mb-4">
-                              <div className="text-xs text-stone-500 mb-2 font-medium">Cooldown</div>
-                              <div className="bg-accent-950/30 border border-accent-900/30 rounded-xl p-3 text-sm leading-relaxed text-stone-300">
+                            <div>
+                              <div className="text-[10px] text-zinc-500 mb-1.5 font-medium uppercase tracking-wider">Cooldown</div>
+                              <div className="bg-accent-950/20 border border-accent-900/20 rounded-xl p-2.5 text-xs leading-relaxed text-zinc-300">
                                 {session.cooldown.split('\n').map((line, i) => (
-                                  <p key={i} className={line.trim() ? 'mb-1' : ''}>
+                                  <p key={i} className={line.trim() ? 'mb-0.5' : ''}>
                                     {line}
                                   </p>
                                 ))}
@@ -236,17 +237,17 @@ export default function History() {
                             </div>
                           )}
                           {session.notes && (
-                            <div className="mb-4">
-                              <div className="text-xs text-stone-500 mb-2 font-medium">Notes</div>
-                              <div className="text-sm text-stone-300 whitespace-pre-wrap">{session.notes}</div>
+                            <div>
+                              <div className="text-[10px] text-zinc-500 mb-1.5 font-medium uppercase tracking-wider">Notes</div>
+                              <div className="text-xs text-zinc-300 whitespace-pre-wrap">{session.notes}</div>
                             </div>
                           )}
                           <button
                             onClick={() => handleDelete(session.id!)}
-                            className="text-red-400 text-sm hover:text-red-300 font-medium flex items-center gap-1"
+                            className="text-red-400 text-xs hover:text-red-300 font-medium flex items-center gap-1 pt-1"
                           >
-                            <Trash2 size={14} />
-                            Delete session
+                            <Trash2 size={12} />
+                            Delete
                           </button>
                         </div>
                       )}
