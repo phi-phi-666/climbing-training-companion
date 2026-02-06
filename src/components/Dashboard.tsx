@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useRecentSessions, useDaysSinceLastSession, useHasSessionToday } from '../hooks/useSessionHistory'
 import { sessionTypes, boulderSubTypes, cardioSubTypes } from '../data/exercises'
 import Modal from './ui/Modal'
+import Accordion from './ui/Accordion'
 import CooldownGenerator from './CooldownGenerator'
 import TodayOptions from './TodayOptions'
 import type { Session } from '../services/db'
@@ -14,6 +15,9 @@ import {
   Footprints,
   Zap,
   StretchHorizontal,
+  Timer,
+  Sparkles,
+  Clock,
   type LucideIcon
 } from 'lucide-react'
 
@@ -76,10 +80,11 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Header */}
       <header className="text-center py-6">
-        <h1 className="text-3xl font-bold tracking-tight text-rose-400">Alpha</h1>
-        <p className="text-stone-500 text-sm mt-1">
+        <h1 className="font-display text-5xl tracking-wider text-rose-400">ALPHA</h1>
+        <p className="text-zinc-500 text-sm mt-2 tracking-wide">
           {new Date().toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'long',
@@ -88,11 +93,16 @@ export default function Dashboard() {
         </p>
       </header>
 
+      {/* Today's Options - Always visible, no accordion */}
       <TodayOptions daysSince={daysSince} hasSessionToday={hasSessionToday} />
 
-      <section className="card">
-        <h2 className="text-lg font-semibold mb-4">Days Since Last Session</h2>
-        <div className="grid grid-cols-2 gap-3">
+      {/* Days Since - Accordion */}
+      <Accordion
+        title="DAYS SINCE"
+        icon={<Timer size={18} />}
+        defaultOpen={false}
+      >
+        <div className="grid grid-cols-4 gap-2">
           {sessionTypes.map((type) => {
             const Icon = sessionIcons[type.value]
             return (
@@ -100,41 +110,49 @@ export default function Dashboard() {
             )
           })}
         </div>
-      </section>
+      </Accordion>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold mb-3">Quick Cooldown</h2>
-        <p className="text-stone-500 text-sm mb-3">Generate a stretch routine for any session type</p>
-        <div className="grid grid-cols-2 gap-2">
+      {/* Quick Cooldown - Accordion */}
+      <Accordion
+        title="QUICK COOLDOWN"
+        icon={<Sparkles size={18} />}
+        defaultOpen={false}
+      >
+        <div className="grid grid-cols-4 gap-2">
           {sessionTypes.map((type) => {
             const Icon = sessionIcons[type.value]
             return (
               <button
                 key={type.value}
                 onClick={() => handleQuickCooldown(type.value)}
-                className="p-3 bg-gradient-to-r from-accent-700/50 to-accent-600/50 hover:from-accent-600 hover:to-accent-500 rounded-xl transition-all flex items-center gap-2 border border-accent-700/30"
+                className="p-3 bg-accent-900/30 hover:bg-accent-800/40 rounded-xl transition-all flex flex-col items-center gap-1 border border-accent-700/20 group"
               >
-                <Icon size={20} strokeWidth={1.5} />
-                <span className="text-sm font-medium">{type.label}</span>
+                <Icon size={20} strokeWidth={1.5} className="text-accent-400 group-hover:text-accent-300" />
+                <span className="text-xs font-medium text-zinc-400 group-hover:text-zinc-300">{type.label}</span>
               </button>
             )
           })}
         </div>
-      </section>
+      </Accordion>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold mb-4">Recent Sessions</h2>
+      {/* Recent Sessions - Accordion */}
+      <Accordion
+        title="RECENT"
+        icon={<Clock size={18} />}
+        badge={recentSessions.length}
+        defaultOpen={false}
+      >
         {recentSessions.length > 0 ? (
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {recentSessions.map((session) => {
               const Icon = sessionIcons[session.type]
               return (
-                <li key={session.id} className="flex justify-between items-center py-3 border-b border-stone-800 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <Icon size={20} strokeWidth={1.5} className="text-rose-400" />
-                    <span className="font-medium">{getSessionDisplayLabel(session)}</span>
+                <li key={session.id} className="flex justify-between items-center py-3 px-3 rounded-lg hover:bg-void-50/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Icon size={18} strokeWidth={1.5} className="text-rose-400" />
+                    <span className="font-medium text-sm">{getSessionDisplayLabel(session)}</span>
                   </div>
-                  <div className="text-stone-500 text-sm">
+                  <div className="text-zinc-500 text-xs">
                     {new Date(session.date).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric'
@@ -145,9 +163,9 @@ export default function Dashboard() {
             })}
           </ul>
         ) : (
-          <p className="text-stone-500 text-sm text-center py-4">No sessions logged yet</p>
+          <p className="text-zinc-500 text-sm text-center py-4">No sessions logged yet</p>
         )}
-      </section>
+      </Accordion>
 
       <Modal
         isOpen={showCooldown}
@@ -174,15 +192,22 @@ function DaysSinceCard({
 }) {
   const days = useDaysSinceLastSession(type)
 
+  // Color based on days
+  const getColor = () => {
+    if (days === null) return 'text-zinc-600'
+    if (days === 0) return 'text-accent-400'
+    if (days <= 2) return 'text-rose-400'
+    if (days <= 5) return 'text-amber-400'
+    return 'text-zinc-400'
+  }
+
   return (
-    <div className="bg-stone-800/50 rounded-xl p-3 text-center border border-stone-700/50">
-      <div className="flex justify-center mb-1">
-        <Icon size={28} strokeWidth={1.5} className="text-stone-400" />
+    <div className="bg-void-100/50 rounded-xl p-3 text-center border border-violet-900/10 hover:border-violet-800/30 transition-colors">
+      <Icon size={20} strokeWidth={1.5} className="mx-auto text-zinc-500 mb-1" />
+      <div className={`text-lg font-bold ${getColor()}`}>
+        {days === null ? '—' : days === 0 ? '✓' : days}
       </div>
-      <div className="text-2xl font-bold text-rose-400">
-        {days === null ? '-' : days === 0 ? 'Today' : days}
-      </div>
-      <div className="text-xs text-stone-500 font-medium">{label}</div>
+      <div className="text-[10px] text-zinc-500 font-medium tracking-wide uppercase">{label}</div>
     </div>
   )
 }

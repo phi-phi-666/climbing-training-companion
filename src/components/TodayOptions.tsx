@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Play,
   X,
+  Sparkles,
   type LucideIcon
 } from 'lucide-react'
 
@@ -107,15 +108,15 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   }
 
   const effortColors: Record<string, string> = {
-    high: 'from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500',
-    medium: 'from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500',
-    low: 'from-accent-600 to-teal-600 hover:from-accent-500 hover:to-teal-500'
+    high: 'from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600',
+    medium: 'from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600',
+    low: 'from-accent-600 to-accent-700 hover:from-accent-500 hover:to-accent-600'
   }
 
   const effortLabels: Record<string, string> = {
-    high: 'High Effort',
-    medium: 'Medium Effort',
-    low: 'Low Effort'
+    high: 'High',
+    medium: 'Medium',
+    low: 'Low'
   }
 
   const handleSelectOption = (option: TodayOption) => {
@@ -145,11 +146,10 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   if (hasSessionToday && !options && !selectedOption) {
     return (
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">What Should I Do Today?</h2>
-        <div className="bg-accent-900/30 border border-accent-700 rounded-xl p-5 text-center">
-          <span className="text-4xl mb-2 block">✅</span>
-          <p className="text-accent-400 font-semibold text-lg">Already trained today!</p>
-          <p className="text-stone-500 text-sm mt-1">Nice work. Rest up for tomorrow.</p>
+        <div className="bg-accent-900/20 border border-accent-700/30 rounded-xl p-5 text-center">
+          <span className="text-3xl mb-2 block">✓</span>
+          <p className="text-accent-400 font-semibold">Already trained today</p>
+          <p className="text-zinc-500 text-sm mt-1">Rest up for tomorrow</p>
         </div>
       </div>
     )
@@ -162,39 +162,39 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
     return (
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Today's Plan</h2>
-          <div className="flex gap-2">
+          <h2 className="font-display text-xl tracking-wide">TODAY'S PLAN</h2>
+          <div className="flex gap-1">
             <button
               onClick={handleGenerate}
-              className="p-2 text-stone-400 hover:text-stone-200 transition-colors"
+              className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg hover:bg-void-50"
               title="Generate new options"
             >
-              <RefreshCw size={18} strokeWidth={1.5} />
+              <RefreshCw size={16} strokeWidth={1.5} />
             </button>
             <button
               onClick={handleClearSelection}
-              className="p-2 text-stone-400 hover:text-stone-200 transition-colors"
+              className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg hover:bg-void-50"
               title="Clear selection"
             >
-              <X size={18} strokeWidth={1.5} />
+              <X size={16} strokeWidth={1.5} />
             </button>
           </div>
         </div>
 
-        <div className={`p-4 rounded-xl bg-gradient-to-r ${effortColors[selectedOption.effort]} mb-4`}>
+        <div className={`p-4 rounded-xl bg-gradient-to-br ${effortColors[selectedOption.effort]} mb-4`}>
           <div className="flex items-start gap-3">
             <div className="bg-black/20 p-2 rounded-lg">
-              <Icon size={28} strokeWidth={1.5} />
+              <Icon size={24} strokeWidth={1.5} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-bold text-lg">{selectedOption.title}</span>
-                <span className="text-xs opacity-75 bg-black/20 px-2 py-0.5 rounded-lg">
+                <span className="font-semibold">{selectedOption.title}</span>
+                <span className="text-[10px] uppercase tracking-wider opacity-75 bg-black/20 px-2 py-0.5 rounded">
                   {effortLabels[selectedOption.effort]}
                 </span>
               </div>
               <p className="text-sm opacity-90 mb-2">{selectedOption.description}</p>
-              <div className="text-sm opacity-80">
+              <div className="text-xs opacity-80">
                 <span className="font-medium">{getSessionTypeLabel(selectedOption.sessionType)}</span>
                 {selectedOption.boulderSubType && <span> • {selectedOption.boulderSubType}</span>}
                 {selectedOption.cardioSubType && <span> • {selectedOption.cardioSubType}</span>}
@@ -204,13 +204,13 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
           </div>
 
           {/* Exercises preview */}
-          <div className="mt-4 pt-3 border-t border-white/20">
-            <div className="text-xs font-medium opacity-75 mb-2">Exercises:</div>
+          <div className="mt-4 pt-3 border-t border-white/10">
+            <div className="text-[10px] uppercase tracking-wider font-medium opacity-60 mb-2">Exercises</div>
             <div className="space-y-1">
               {selectedOption.exercises.map((ex, i) => (
                 <div key={i} className="text-sm flex justify-between">
-                  <span>{ex.name}</span>
-                  <span className="opacity-75">
+                  <span className="opacity-90">{ex.name}</span>
+                  <span className="opacity-60 text-xs">
                     {ex.sets && `${ex.sets}×`}{ex.reps || ''}
                   </span>
                 </div>
@@ -220,37 +220,34 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
 
           {/* Recovery notes */}
           {selectedOption.recoveryNotes && (
-            <div className="mt-3 pt-3 border-t border-white/20 text-sm opacity-80 italic">
-              💡 {selectedOption.recoveryNotes}
+            <div className="mt-3 pt-3 border-t border-white/10 text-sm opacity-70 italic">
+              {selectedOption.recoveryNotes}
             </div>
           )}
         </div>
 
         <button
           onClick={handleStartTraining}
-          className="w-full btn-primary flex items-center justify-center gap-2 text-lg py-4"
+          className="w-full btn-primary flex items-center justify-center gap-2 py-4"
         >
-          <Play size={20} strokeWidth={2} />
-          <span>Start Training</span>
+          <Play size={18} strokeWidth={2} />
+          <span className="font-semibold tracking-wide">Start Training</span>
         </button>
       </div>
     )
   }
 
+  // Initial state - just the button, no description
   if (!options && !loading) {
     return (
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">What Should I Do Today?</h2>
-        <p className="text-stone-500 text-sm mb-4">
-          Get AI-powered training suggestions based on your schedule and recovery
-        </p>
         <button
           onClick={handleGenerate}
-          className="w-full btn-primary flex items-center justify-center gap-2"
+          className="w-full btn-primary flex items-center justify-center gap-3 py-4"
           disabled={loading}
         >
-          <span>✨</span>
-          <span>Generate Today's Options</span>
+          <Sparkles size={20} strokeWidth={1.5} />
+          <span className="font-semibold tracking-wide">Generate Today's Options</span>
         </button>
       </div>
     )
@@ -259,10 +256,9 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   if (loading) {
     return (
       <div className="card">
-        <h2 className="text-lg font-semibold mb-4">What Should I Do Today?</h2>
         <div className="text-center py-8">
-          <div className="inline-block w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-stone-500 text-sm">Analyzing your training...</p>
+          <div className="inline-block w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-zinc-500 text-sm">Analyzing your training...</p>
         </div>
       </div>
     )
@@ -271,8 +267,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   if (error) {
     return (
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">What Should I Do Today?</h2>
-        <div className="bg-red-900/30 border border-red-700 rounded-xl p-4 mb-3">
+        <div className="bg-red-900/20 border border-red-800/30 rounded-xl p-4 mb-3">
           <p className="text-red-400 text-sm">{error}</p>
         </div>
         <button onClick={handleGenerate} className="btn-secondary w-full">
@@ -285,39 +280,39 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Today's Options</h2>
+        <h2 className="font-display text-xl tracking-wide">TODAY'S OPTIONS</h2>
         <button
           onClick={handleGenerate}
-          className="p-2 text-rose-400 hover:text-rose-300 transition-colors"
+          className="p-2 text-rose-400 hover:text-rose-300 transition-colors rounded-lg hover:bg-void-50"
           disabled={loading}
           title="Refresh options"
         >
-          <RefreshCw size={18} strokeWidth={1.5} />
+          <RefreshCw size={16} strokeWidth={1.5} />
         </button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {options?.map((option, index) => {
           const Icon = sessionIcons[option.sessionType] || Dumbbell
           return (
             <button
               key={index}
               onClick={() => handleSelectOption(option)}
-              className={`w-full p-4 rounded-xl bg-gradient-to-r ${effortColors[option.effort]} transition-all text-left shadow-lg`}
+              className={`w-full p-4 rounded-xl bg-gradient-to-r ${effortColors[option.effort]} transition-all text-left shadow-lg hover:scale-[1.01] active:scale-[0.99]`}
             >
               <div className="flex items-start gap-3">
                 <div className="bg-black/20 p-2 rounded-lg">
-                  <Icon size={24} strokeWidth={1.5} />
+                  <Icon size={20} strokeWidth={1.5} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold">{option.title}</span>
-                    <span className="text-xs opacity-75 bg-black/20 px-2 py-0.5 rounded-lg">
+                    <span className="text-[10px] uppercase tracking-wider opacity-75 bg-black/20 px-2 py-0.5 rounded">
                       {effortLabels[option.effort]}
                     </span>
                   </div>
-                  <p className="text-sm opacity-90 mb-2">{option.description}</p>
-                  <div className="flex items-center gap-2 text-xs opacity-75">
+                  <p className="text-sm opacity-90 mb-1">{option.description}</p>
+                  <div className="flex items-center gap-2 text-xs opacity-70">
                     <span>{getSessionTypeLabel(option.sessionType)}</span>
                     <span>•</span>
                     <span>{option.durationMinutes} min</span>
