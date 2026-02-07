@@ -26,36 +26,71 @@ interface WorkoutTimerProps {
 
 // Parse duration strings like "2 min", "30 sec", "1-2 min", "45s", etc.
 function parseDuration(text: string): number {
-  // Check for minutes
-  let match = text.match(/(\d+)\s*min/i) || text.match(/(\d+)\s*m(?![a-z])/i)
-  if (match) {
-    return parseInt(match[1]) * 60
-  }
+  // First, remove the exercise numbering and any leading content before the actual exercise
+  // This handles cases like "1. High knees (30 sec)" - we don't want to pick up "1"
+  const cleanedText = text.replace(/^\d+[.)]\s*/, '').trim()
 
-  // Check for seconds
-  match = text.match(/(\d+)\s*sec/i) || text.match(/(\d+)\s*s(?![a-z])/i)
-  if (match) {
-    return parseInt(match[1])
-  }
+  // Check for explicit time durations first (more specific patterns)
+  // Look for patterns like "30 sec", "2 min", "1-2 min"
 
-  // Check for range (1-2 min) - take average
-  match = text.match(/(\d+)-(\d+)\s*min/i)
+  // Range of minutes (1-2 min) - take average
+  let match = cleanedText.match(/(\d+)\s*-\s*(\d+)\s*min/i)
   if (match) {
     return Math.round((parseInt(match[1]) + parseInt(match[2])) / 2) * 60
   }
 
-  // Check for "each side" - double the time
-  const eachSideMatch = text.match(/each\s*side/i)
-
-  // Check for reps - assume 30 sec per set
-  match = text.match(/(\d+)\s*x/i)
+  // Single minutes with explicit "min" suffix
+  match = cleanedText.match(/(\d+)\s*min(?:ute)?s?\b/i)
   if (match) {
-    const sets = parseInt(match[1])
-    return sets * 30 * (eachSideMatch ? 2 : 1)
+    const mins = parseInt(match[1])
+    // Sanity check: warmup exercises rarely exceed 3 minutes
+    if (mins <= 5) {
+      return mins * 60
+    }
   }
 
-  // Default: 60 seconds for unknown durations
-  return 60
+  // Seconds with explicit "sec" or "second" suffix
+  match = cleanedText.match(/(\d+)\s*sec(?:ond)?s?\b/i)
+  if (match) {
+    return parseInt(match[1])
+  }
+
+  // Shorthand like "30s" or "2m" (only at word boundaries, not part of other words)
+  match = cleanedText.match(/\b(\d+)\s*s\b/i)
+  if (match && !cleanedText.match(new RegExp(`\\d+\\s*sets?`, 'i'))) {
+    const secs = parseInt(match[1])
+    if (secs <= 120) {
+      return secs
+    }
+  }
+
+  match = cleanedText.match(/\b(\d+)\s*m\b/i)
+  if (match && !cleanedText.match(new RegExp(`\\d+\\s*m(?:eter|ile)`, 'i'))) {
+    const mins = parseInt(match[1])
+    if (mins <= 5) {
+      return mins * 60
+    }
+  }
+
+  // Check for reps/sets patterns like "3 x 10" or "10 reps" - assume ~3 sec per rep
+  match = cleanedText.match(/(\d+)\s*x\s*(\d+)/i)
+  if (match) {
+    const sets = parseInt(match[1])
+    const reps = parseInt(match[2])
+    return sets * reps * 3
+  }
+
+  match = cleanedText.match(/(\d+)\s*reps?\b/i)
+  if (match) {
+    const reps = parseInt(match[1])
+    return reps * 3
+  }
+
+  // Check for "each side" - this will double whatever time we compute
+  const eachSideMultiplier = cleanedText.match(/each\s*side|per\s*side|both\s*sides/i) ? 2 : 1
+
+  // Default: 45 seconds for unknown durations (reasonable for most warmup exercises)
+  return 45 * eachSideMultiplier
 }
 
 // Parse the routine text into exercises
@@ -64,45 +99,57 @@ function parseRoutine(routine: string): Exercise[] {
   const exercises: Exercise[] = []
 
   for (const line of lines) {
-    // Skip empty lines or lines that look like headers
-    if (!line.trim() || line.match(/^(warmup|cooldown|exercises|notes)/i)) {
+    const trimmedLine = line.trim()
+
+    // Skip empty lines
+    if (!trimmedLine) continue
+
+    // Skip header lines (Warmup:, Cooldown:, Notes:, etc.)
+    if (trimmedLine.match(/^(warmup|cooldown|exercises?|notes?|stretching|mobility|cool\s*down|warm\s*up)\s*:?\s*$/i)) {
       continue
     }
 
-    // Remove numbering like "1. ", "1) ", "- ", etc.
-    let cleanLine = line.replace(/^[\d]+[.)]\s*/, '').replace(/^[-•]\s*/, '').trim()
+    // Skip lines that are just headers/section titles (all caps, short)
+    if (trimmedLine.match(/^[A-Z\s]{3,20}:?$/) && trimmedLine.length < 25) {
+      continue
+    }
 
-    if (!cleanLine) continue
+    // Remove numbering like "1. ", "1) ", "- ", "• ", etc.
+    let cleanLine = trimmedLine
+      .replace(/^[\d]+[.)]\s*/, '')
+      .replace(/^[-•→►]\s*/, '')
+      .trim()
 
-    // Extract exercise name (everything before duration hint)
-    const durationHints = /([\d]+ ?min|[\d]+ ?sec|[\d]+s\b|[\d]+m\b|[\d]+-[\d]+ ?min|[\d]+ ?x)/i
-    const nameMatch = cleanLine.match(durationHints)
+    if (!cleanLine || cleanLine.length < 3) continue
 
+    // Extract exercise name - remove duration/rep info from the end
     let name = cleanLine
-    if (nameMatch && nameMatch.index !== undefined) {
-      // If duration is at the start, take everything after
-      if (nameMatch.index < 10) {
-        name = cleanLine.substring(nameMatch.index + nameMatch[0].length).trim()
-        // Remove leading punctuation
-        name = name.replace(/^[:\-–—]\s*/, '')
-      } else {
-        // Duration is at the end, take everything before
-        name = cleanLine.substring(0, nameMatch.index).trim()
-        // Remove trailing punctuation
-        name = name.replace(/[:\-–—]\s*$/, '')
-      }
-    }
+      // Remove parenthetical duration info like "(30 sec)" or "(2 min)"
+      .replace(/\s*\([^)]*(?:sec|min|reps?|sets?|x\s*\d+)[^)]*\)\s*$/i, '')
+      // Remove trailing duration like "- 30 sec" or ": 2 min"
+      .replace(/\s*[-:–—]\s*\d+\s*(?:sec|min|reps?|sets?|x\s*\d+).*$/i, '')
+      // Remove trailing duration like "30 sec" or "2 min" at the very end
+      .replace(/\s+\d+\s*(?:sec|min)\s*$/i, '')
+      .trim()
 
-    // If name ends up too short, use the whole line
+    // Clean up any remaining trailing punctuation
+    name = name.replace(/[-:–—,]\s*$/, '').trim()
+
+    // If name is too short after cleaning, use the original (minus numbering)
     if (name.length < 3) {
-      name = cleanLine.replace(/\([^)]+\)/g, '').trim()  // Remove parenthetical content
+      name = cleanLine.replace(/\s*\([^)]+\)\s*$/, '').trim()
     }
 
-    // Parse duration from the original line
+    // Final fallback
+    if (name.length < 3) {
+      name = cleanLine
+    }
+
+    // Parse duration from the FULL original line
     const duration = parseDuration(cleanLine)
 
     exercises.push({
-      name: name.substring(0, 50),  // Truncate long names
+      name: name,
       durationSeconds: duration,
       originalLine: cleanLine
     })
@@ -126,7 +173,7 @@ export default function WorkoutTimer({
 }: WorkoutTimerProps) {
   const exercises = parseRoutine(routine)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [timeRemaining, setTimeRemaining] = useState(exercises[0]?.durationSeconds || 60)
+  const [timeRemaining, setTimeRemaining] = useState(exercises[0]?.durationSeconds || 45)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isResting, setIsResting] = useState(false)  // Between exercise rest
   const [autoAdvance, setAutoAdvance] = useState(true)
@@ -253,7 +300,7 @@ export default function WorkoutTimer({
 
   const handleRestart = () => {
     setCurrentIndex(0)
-    setTimeRemaining(exercises[0]?.durationSeconds || 60)
+    setTimeRemaining(exercises[0]?.durationSeconds || 45)
     setIsPlaying(false)
     setIsResting(false)
   }
@@ -351,12 +398,14 @@ export default function WorkoutTimer({
           <>
             <div className="text-sm uppercase tracking-wider opacity-70 mb-2">Rest</div>
             <div className="text-5xl font-mono font-bold mb-2">{formatTime(timeRemaining)}</div>
-            <div className="text-sm opacity-80">Up next: {nextExercise?.name}</div>
+            <div className="text-sm opacity-80 px-4 line-clamp-2">Up next: {nextExercise?.name}</div>
           </>
         ) : (
           <>
             <div className="text-sm uppercase tracking-wider opacity-70 mb-1">Current</div>
-            <div className="text-xl font-semibold mb-3">{currentExercise?.name}</div>
+            <div className="text-lg font-semibold mb-3 px-2 line-clamp-2 min-h-[3.5rem] flex items-center justify-center">
+              {currentExercise?.name}
+            </div>
             <div className="text-5xl font-mono font-bold mb-2">{formatTime(timeRemaining)}</div>
             <div className="text-xs opacity-60">
               {formatTime(elapsedSeconds)} / {formatTime(totalSeconds)}
@@ -394,12 +443,12 @@ export default function WorkoutTimer({
       {/* Next exercise preview */}
       {nextExercise && !isResting && (
         <div className="bg-void-100 rounded-xl p-3 border border-violet-900/20">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
               <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-0.5">Next</div>
-              <div className="text-sm text-zinc-300">{nextExercise.name}</div>
+              <div className="text-sm text-zinc-300 line-clamp-1">{nextExercise.name}</div>
             </div>
-            <div className="text-sm text-zinc-500">
+            <div className="text-sm text-zinc-500 flex-shrink-0">
               {formatTime(nextExercise.durationSeconds)}
             </div>
           </div>

@@ -16,7 +16,8 @@ import {
   Hand,
   ChevronDown,
   ChevronUp,
-  X
+  X,
+  Youtube
 } from 'lucide-react'
 
 // Icons for each category
@@ -203,9 +204,19 @@ export default function Exercises() {
 
                     {isExpanded && (
                       <div className="px-3 pb-3 border-t border-violet-900/10 pt-3 bg-void-100/50">
-                        <p className="text-sm text-zinc-400 leading-relaxed">
+                        <p className="text-sm text-zinc-400 leading-relaxed mb-3">
                           {exercise.description}
                         </p>
+                        <a
+                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' exercise tutorial')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Youtube size={14} />
+                          <span>Watch tutorial</span>
+                        </a>
                       </div>
                     )}
                   </div>
