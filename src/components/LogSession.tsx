@@ -21,6 +21,7 @@ import Modal from './ui/Modal'
 import Accordion from './ui/Accordion'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
+import SupplementaryGenerator from './SupplementaryGenerator'
 import { useToast } from './ui/Toast'
 import type { TodayOption } from '../services/ai'
 import {
@@ -40,8 +41,66 @@ import {
   Dumbbell as ExerciseIcon,
   StickyNote,
   Loader2,
+  Plus,
   type LucideIcon
 } from 'lucide-react'
+
+// Storage key for form persistence
+const LOG_FORM_STORAGE_KEY = 'alpha_log_form_state'
+
+interface LogFormState {
+  sessionDate: string
+  sessionType: SessionType
+  boulderSubType: BoulderSubType
+  cardioSubType: CardioSubType
+  selectedGroups: MuscleGroup[]
+  selectedExercises: string[]
+  selectedMobilityExercises: string[]
+  selectedHangboardExercises: string[]
+  selectedRecovery: RecoveryType[]
+  duration: number
+  notes: string
+  warmup: string | null
+  cooldown: string | null
+  _savedAt: string  // ISO date to check freshness
+}
+
+function loadFormState(): Partial<LogFormState> | null {
+  try {
+    const stored = localStorage.getItem(LOG_FORM_STORAGE_KEY)
+    if (!stored) return null
+
+    const parsed: LogFormState = JSON.parse(stored)
+
+    // Check if saved today (don't restore stale state from previous days)
+    const savedDate = parsed._savedAt?.split('T')[0]
+    const today = new Date().toISOString().split('T')[0]
+    if (savedDate !== today) {
+      localStorage.removeItem(LOG_FORM_STORAGE_KEY)
+      return null
+    }
+
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function saveFormState(state: Omit<LogFormState, '_savedAt'>) {
+  try {
+    const toSave: LogFormState = {
+      ...state,
+      _savedAt: new Date().toISOString()
+    }
+    localStorage.setItem(LOG_FORM_STORAGE_KEY, JSON.stringify(toSave))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function clearFormState() {
+  localStorage.removeItem(LOG_FORM_STORAGE_KEY)
+}
 
 // Icon mapping for session types
 const sessionIcons: Record<string, LucideIcon> = {
@@ -96,29 +155,40 @@ export default function LogSession() {
   const { showToast } = useToast()
   const prefill = (location.state as { prefill?: TodayOption })?.prefill
 
-  const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0])
-  const [sessionType, setSessionType] = useState<SessionType>('boulder')
-  const [boulderSubType, setBoulderSubType] = useState<BoulderSubType>('problems')
-  const [cardioSubType, setCardioSubType] = useState<CardioSubType>('run')
-  const [selectedGroups, setSelectedGroups] = useState<MuscleGroup[]>([])
-  const [selectedExercises, setSelectedExercises] = useState<string[]>([])
-  const [selectedMobilityExercises, setSelectedMobilityExercises] = useState<string[]>([])
-  const [selectedHangboardExercises, setSelectedHangboardExercises] = useState<string[]>([])
-  const [selectedRecovery, setSelectedRecovery] = useState<RecoveryType[]>([])
-  const [duration, setDuration] = useState(60)
-  const [notes, setNotes] = useState('')
-  const [warmup, setWarmup] = useState<string | null>(null)
-  const [cooldown, setCooldown] = useState<string | null>(null)
+  // Load saved state from localStorage
+  const savedState = loadFormState()
+
+  const [sessionDate, setSessionDate] = useState(savedState?.sessionDate ?? new Date().toISOString().split('T')[0])
+  const [sessionType, setSessionType] = useState<SessionType>(savedState?.sessionType ?? 'boulder')
+  const [boulderSubType, setBoulderSubType] = useState<BoulderSubType>(savedState?.boulderSubType ?? 'problems')
+  const [cardioSubType, setCardioSubType] = useState<CardioSubType>(savedState?.cardioSubType ?? 'run')
+  const [selectedGroups, setSelectedGroups] = useState<MuscleGroup[]>(savedState?.selectedGroups ?? [])
+  const [selectedExercises, setSelectedExercises] = useState<string[]>(savedState?.selectedExercises ?? [])
+  const [selectedMobilityExercises, setSelectedMobilityExercises] = useState<string[]>(savedState?.selectedMobilityExercises ?? [])
+  const [selectedHangboardExercises, setSelectedHangboardExercises] = useState<string[]>(savedState?.selectedHangboardExercises ?? [])
+  const [selectedRecovery, setSelectedRecovery] = useState<RecoveryType[]>(savedState?.selectedRecovery ?? [])
+  const [duration, setDuration] = useState(savedState?.duration ?? 60)
+  const [notes, setNotes] = useState(savedState?.notes ?? '')
+  const [warmup, setWarmup] = useState<string | null>(savedState?.warmup ?? null)
+  const [cooldown, setCooldown] = useState<string | null>(savedState?.cooldown ?? null)
+  const [supplementary, setSupplementary] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showWarmup, setShowWarmup] = useState(false)
   const [showCooldown, setShowCooldown] = useState(false)
+  const [showSupplementary, setShowSupplementary] = useState(false)
   const [warmupFlash, setWarmupFlash] = useState(false)
   const [cooldownFlash, setCooldownFlash] = useState(false)
+  const [supplementaryFlash, setSupplementaryFlash] = useState(false)
 
   // Handle prefill from Today's Options
   useEffect(() => {
     if (prefill) {
-      setSessionType(prefill.sessionType)
+      // Skip if it's a rest day - rest days don't need logging
+      if (prefill.sessionType === 'rest' || prefill.isRestDay) {
+        window.history.replaceState({}, document.title)
+        return
+      }
+      setSessionType(prefill.sessionType as SessionType)
       setDuration(prefill.durationMinutes)
 
       if (prefill.boulderSubType) {
@@ -180,11 +250,42 @@ export default function LogSession() {
     }
   }, [prefill])
 
-  // Clear warmup and cooldown when session type or boulder sub-type changes
+  // Persist form state to localStorage whenever it changes
   useEffect(() => {
-    setWarmup(null)
-    setCooldown(null)
-  }, [sessionType, boulderSubType])
+    // Don't save if we just loaded from prefill (let user modify first)
+    if (prefill) return
+
+    saveFormState({
+      sessionDate,
+      sessionType,
+      boulderSubType,
+      cardioSubType,
+      selectedGroups,
+      selectedExercises,
+      selectedMobilityExercises,
+      selectedHangboardExercises,
+      selectedRecovery,
+      duration,
+      notes,
+      warmup,
+      cooldown
+    })
+  }, [
+    sessionDate,
+    sessionType,
+    boulderSubType,
+    cardioSubType,
+    selectedGroups,
+    selectedExercises,
+    selectedMobilityExercises,
+    selectedHangboardExercises,
+    selectedRecovery,
+    duration,
+    notes,
+    warmup,
+    cooldown,
+    prefill
+  ])
 
   // Flash animation when warmup is generated
   const handleWarmupGenerated = (newWarmup: string) => {
@@ -198,6 +299,13 @@ export default function LogSession() {
     setCooldown(newCooldown)
     setCooldownFlash(true)
     setTimeout(() => setCooldownFlash(false), 600)
+  }
+
+  // Flash animation when supplementary is generated
+  const handleSupplementaryGenerated = (newSupplementary: string) => {
+    setSupplementary(newSupplementary)
+    setSupplementaryFlash(true)
+    setTimeout(() => setSupplementaryFlash(false), 600)
   }
 
   const dateOptions = getDateOptions()
@@ -305,6 +413,9 @@ export default function LogSession() {
       warmup: warmup || undefined,
       cooldown: cooldown || undefined
     })
+
+    // Clear saved form state after successful save
+    clearFormState()
 
     showToast('Session saved!')
     navigate('/')
@@ -463,6 +574,19 @@ export default function LogSession() {
           <span className="text-sm font-medium">{cooldown ? 'Cooldown ✓' : 'Cooldown'}</span>
         </button>
       </div>
+
+      {/* I Need More - Supplementary/Antagonist exercises */}
+      <button
+        onClick={() => setShowSupplementary(true)}
+        className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl transition-all ${
+          supplementary
+            ? 'bg-amber-600 text-white'
+            : 'bg-void-100 text-amber-400 hover:bg-amber-900/30 border border-amber-700/30'
+        } ${supplementaryFlash ? 'success-flash' : ''}`}
+      >
+        <Plus size={18} strokeWidth={1.5} />
+        <span className="text-sm font-medium">{supplementary ? 'Bonus Workout ✓' : 'I Need More!'}</span>
+      </button>
 
       {/* Exercises accordion - only show when relevant */}
       {(showMuscleGroups || showMobilityExercises || showHangboardExercises) && (
@@ -643,6 +767,21 @@ export default function LogSession() {
           savedCooldown={cooldown}
           muscleGroups={selectedGroups}
           exercises={selectedExercises}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={showSupplementary}
+        onClose={() => setShowSupplementary(false)}
+        title="I Need More!"
+      >
+        <SupplementaryGenerator
+          key={`supplementary-${sessionType}-${boulderSubType || 'none'}`}
+          sessionType={sessionType}
+          boulderSubType={sessionType === 'boulder' ? boulderSubType : undefined}
+          onClose={() => setShowSupplementary(false)}
+          onSupplementaryGenerated={handleSupplementaryGenerated}
+          savedSupplementary={supplementary}
         />
       </Modal>
     </div>

@@ -329,6 +329,78 @@ export interface DaysSinceByType {
   mobility: number | null
 }
 
+// Supplementary/antagonist exercises for "I Need More"
+function buildSupplementaryPrompt(
+  sessionType: string,
+  context: AIContext,
+  boulderSubType?: string
+): string {
+  const subTypeText = boulderSubType ? ` (${boulderSubType})` : ''
+
+  // Session-specific antagonist focus
+  let antagonistFocus = ''
+  switch (sessionType) {
+    case 'boulder':
+    case 'lead':
+    case 'hangboard':
+      antagonistFocus = `After climbing, focus on ANTAGONIST muscles:
+- PUSHING movements (climbing is all pulling)
+- Chest: push-ups, dips, chest flies
+- Shoulders: overhead press, front raises, pike push-ups
+- Triceps: dips, tricep extensions
+- Wrist extensors: reverse wrist curls
+- External rotators: band rotations, face pulls`
+      break
+    case 'gym':
+    case 'crossfit':
+    case 'hiit':
+      antagonistFocus = `After strength training, add SUPPLEMENTARY work:
+- Core stability if not covered
+- Mobility work for worked muscles
+- Light antagonist work for balance`
+      break
+    default:
+      antagonistFocus = `Add complementary exercises:
+- Core work
+- Upper body if lower body was focus (and vice versa)
+- Mobility and stability work`
+  }
+
+  return `Generate a SHORT supplementary workout after a ${sessionType}${subTypeText} session.
+
+The user has energy left and wants to do MORE, but smart training.
+
+${antagonistFocus}
+
+Recent activity (last 7 days):
+${formatRecentSessions(context.lastSessions)}
+
+Today is ${context.currentDay}.
+
+Requirements:
+- 10-20 minutes MAX (this is bonus work, not a new session)
+- 3-5 exercises only
+- Focus on ANTAGONIST or COMPLEMENTARY movements
+- Include sets and reps
+- Keep it simple and effective
+- For climbing sessions: PRIORITIZE pushing movements and external rotation
+
+IMPORTANT: Return plain text only. No markdown formatting, no headers, no bold text, no asterisks. Just numbered lines like:
+1. Exercise name - 3×12 (brief note if needed)
+2. Another exercise - 3×10
+
+Return only the exercises, no preamble or explanation.`
+}
+
+export async function generateSupplementary(
+  sessionType: Session['type'],
+  context: AIContext,
+  boulderSubType?: string
+): Promise<string> {
+  const prompt = buildSupplementaryPrompt(sessionType, context, boulderSubType)
+  return callOpenRouter(prompt)
+}
+
 // Structured exercise with sets/reps for pre-populating log
 export interface SuggestedExercise {
   name: string
@@ -337,22 +409,66 @@ export interface SuggestedExercise {
 }
 
 export interface TodayOption {
-  effort: 'high' | 'medium' | 'low'
+  effort: 'high' | 'medium' | 'low' | 'rest'  // 'rest' for rest day suggestions
   title: string
   description: string
-  sessionType: Session['type']
+  sessionType: Session['type'] | 'rest'  // 'rest' is a special type for rest days
   boulderSubType?: 'problems' | 'circuits' | 'campus' | 'intervals'
   cardioSubType?: 'bike' | 'elliptical' | 'run' | 'row'
   muscleGroups?: string[]
   exercises: SuggestedExercise[]
   durationMinutes: number
   recoveryNotes?: string  // For things like "finish with 15min foam rolling"
+  isRestDay?: boolean  // Flag for rest day suggestions
 }
 
 function buildTodayOptionsPrompt(context: AIContext, daysSince: DaysSinceByType): string {
   const daysSinceText = Object.entries(daysSince)
     .map(([type, days]) => `- ${type}: ${days === null ? 'never' : days === 0 ? 'today' : `${days} days ago`}`)
     .join('\n')
+
+  // Calculate training load for rest day logic
+  const recentSessions = context.lastSessions
+  const sessionsLast3Days = recentSessions.filter(s => {
+    const sessionDate = new Date(s.date)
+    const today = new Date()
+    const diffDays = Math.floor((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24))
+    return diffDays <= 3
+  })
+  const consecutiveTrainingDays = sessionsLast3Days.length
+  const hasHighIntensityRecently = sessionsLast3Days.some(s =>
+    s.type === 'boulder' || s.type === 'hangboard' || s.type === 'hiit' || s.type === 'crossfit'
+  )
+
+  // Determine if rest day should be suggested
+  const shouldSuggestRest = consecutiveTrainingDays >= 3 || (consecutiveTrainingDays >= 2 && hasHighIntensityRecently)
+
+  const restDayInstruction = shouldSuggestRest ? `
+REST DAY CONSIDERATION:
+You've trained ${consecutiveTrainingDays} days in the last 3 days${hasHighIntensityRecently ? ' including high-intensity sessions' : ''}.
+Your body likely needs recovery. For ONE of your 3 options (replace the LOW effort option), suggest a REST DAY instead:
+- Use "effort": "rest" and "sessionType": "rest" and "isRestDay": true
+- Title should be calming (e.g., "Complete Rest", "Recovery Day", "Take It Easy")
+- Description should acknowledge the training load and suggest rest
+- exercises array can include gentle activities: walk, sauna, bath, massage, stretching, sleep, reading
+- Keep durationMinutes low (0-30)
+- Be encouraging, not preachy - rest is part of training!
+
+Example rest day option:
+{
+  "effort": "rest",
+  "title": "Recovery Day",
+  "description": "You've pushed hard - let your body adapt and grow stronger",
+  "sessionType": "rest",
+  "isRestDay": true,
+  "exercises": [
+    {"name": "Leisurely walk", "reps": "20-30 min"},
+    {"name": "Sauna or hot bath", "reps": "15-20 min"}
+  ],
+  "durationMinutes": 0,
+  "recoveryNotes": "Focus on sleep, hydration, and nutrition today"
+}
+` : ''
 
   return `Today is ${context.currentDay}.
 
@@ -370,17 +486,18 @@ Session types (ONLY use these exact values for sessionType):
 - "hiit"
 - "crossfit"
 - "mobility"
+- "rest" (ONLY when rest day is appropriate - see below)
 
 Days since last session by type:
 ${daysSinceText}
 
 Recent activity (last 7 days):
 ${formatRecentSessions(context.lastSessions)}
-
+${restDayInstruction}
 Suggest exactly 3 training options for today:
 1. HIGH effort - for when feeling strong and well-recovered
 2. MEDIUM effort - balanced training appropriate for the day
-3. LOW effort - recovery focused, light activity
+3. LOW effort - recovery focused, light activity ${shouldSuggestRest ? '(OR a rest day if warranted)' : ''}
 
 IMPORTANT RULES:
 - Each option MUST map to exactly one sessionType from the list above
@@ -389,7 +506,7 @@ IMPORTANT RULES:
 - For climbing sessions, exercises can be descriptive (e.g., {"name": "V3-V4 problems", "sets": 10})
 - For cardio, just include duration in the exercise (e.g., {"name": "Running", "reps": "30 min"})
 - If suggesting recovery activities (foam rolling, yoga, breathing), put them in recoveryNotes, not as the main session
-- durationMinutes should be realistic (30-120 for most sessions)
+- durationMinutes should be realistic (30-120 for most sessions, 0 for rest days)
 
 Return as JSON with this exact structure:
 {

@@ -2,9 +2,10 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import Dashboard from './components/Dashboard'
 import LogSession from './components/LogSession'
 import History from './components/History'
+import Exercises from './components/Exercises'
 import { ToastProvider } from './components/ui/Toast'
 import ErrorBoundary from './components/ui/ErrorBoundary'
-import { Home, Plus, Calendar } from 'lucide-react'
+import { Home, Plus, Calendar, BookOpen } from 'lucide-react'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/log" element={<LogSession />} />
+                <Route path="/exercises" element={<Exercises />} />
                 <Route path="/history" element={<History />} />
               </Routes>
             </main>
@@ -25,7 +27,7 @@ function App() {
             <NavLink
               to="/"
               className={({ isActive }) =>
-                `flex flex-col items-center py-3 px-6 text-sm font-medium transition-all ${
+                `flex flex-col items-center py-3 px-4 text-sm font-medium transition-all ${
                   isActive
                     ? 'text-rose-400'
                     : 'text-zinc-500 hover:text-zinc-300'
@@ -38,7 +40,7 @@ function App() {
             <NavLink
               to="/log"
               className={({ isActive }) =>
-                `flex flex-col items-center py-3 px-6 text-sm font-medium transition-all ${
+                `flex flex-col items-center py-3 px-4 text-sm font-medium transition-all ${
                   isActive
                     ? 'text-rose-400'
                     : 'text-zinc-500 hover:text-zinc-300'
@@ -49,9 +51,22 @@ function App() {
               <span className="text-xs tracking-wide">Log</span>
             </NavLink>
             <NavLink
+              to="/exercises"
+              className={({ isActive }) =>
+                `flex flex-col items-center py-3 px-4 text-sm font-medium transition-all ${
+                  isActive
+                    ? 'text-rose-400'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                }`
+              }
+            >
+              <BookOpen size={22} strokeWidth={1.5} className="mb-1" />
+              <span className="text-xs tracking-wide">Exercises</span>
+            </NavLink>
+            <NavLink
               to="/history"
               className={({ isActive }) =>
-                `flex flex-col items-center py-3 px-6 text-sm font-medium transition-all ${
+                `flex flex-col items-center py-3 px-4 text-sm font-medium transition-all ${
                   isActive
                     ? 'text-rose-400'
                     : 'text-zinc-500 hover:text-zinc-300'

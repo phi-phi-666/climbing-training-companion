@@ -20,6 +20,8 @@ import {
   Play,
   X,
   Sparkles,
+  Moon,
+  Coffee,
   type LucideIcon
 } from 'lucide-react'
 
@@ -32,7 +34,8 @@ const sessionIcons: Record<string, LucideIcon> = {
   cardio: Footprints,
   hiit: Flame,
   crossfit: Zap,
-  mobility: StretchHorizontal
+  mobility: StretchHorizontal,
+  rest: Coffee
 }
 
 interface TodayOptionsProps {
@@ -110,13 +113,15 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   const effortColors: Record<string, string> = {
     high: 'from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600',
     medium: 'from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600',
-    low: 'from-accent-600 to-accent-700 hover:from-accent-500 hover:to-accent-600'
+    low: 'from-accent-600 to-accent-700 hover:from-accent-500 hover:to-accent-600',
+    rest: 'from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600'
   }
 
   const effortLabels: Record<string, string> = {
     high: 'High',
     medium: 'Medium',
-    low: 'Low'
+    low: 'Low',
+    rest: 'Rest'
   }
 
   const handleSelectOption = (option: TodayOption) => {
@@ -139,6 +144,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   }
 
   const getSessionTypeLabel = (type: string) => {
+    if (type === 'rest') return 'Rest Day'
     return sessionTypes.find(t => t.value === type)?.label || type
   }
 
@@ -158,11 +164,14 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
   // Show selected option with Start Training button
   if (selectedOption) {
     const Icon = sessionIcons[selectedOption.sessionType] || Dumbbell
+    const isRestDay = selectedOption.isRestDay || selectedOption.sessionType === 'rest'
 
     return (
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl tracking-wide">TODAY'S PLAN</h2>
+          <h2 className="font-display text-xl tracking-wide">
+            {isRestDay ? "TODAY'S REST" : "TODAY'S PLAN"}
+          </h2>
           <div className="flex gap-1">
             <button
               onClick={handleGenerate}
@@ -181,42 +190,48 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
           </div>
         </div>
 
-        <div className={`p-4 rounded-xl bg-gradient-to-br ${effortColors[selectedOption.effort]} mb-4`}>
+        <div className={`p-4 rounded-xl bg-gradient-to-br ${effortColors[selectedOption.effort] || effortColors.rest} ${isRestDay ? '' : 'mb-4'}`}>
           <div className="flex items-start gap-3">
             <div className="bg-black/20 p-2 rounded-lg">
-              <Icon size={24} strokeWidth={1.5} />
+              {isRestDay ? <Moon size={24} strokeWidth={1.5} /> : <Icon size={24} strokeWidth={1.5} />}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-semibold">{selectedOption.title}</span>
                 <span className="text-[10px] uppercase tracking-wider opacity-75 bg-black/20 px-2 py-0.5 rounded">
-                  {effortLabels[selectedOption.effort]}
+                  {effortLabels[selectedOption.effort] || 'Rest'}
                 </span>
               </div>
               <p className="text-sm opacity-90 mb-2">{selectedOption.description}</p>
-              <div className="text-xs opacity-80">
-                <span className="font-medium">{getSessionTypeLabel(selectedOption.sessionType)}</span>
-                {selectedOption.boulderSubType && <span> • {selectedOption.boulderSubType}</span>}
-                {selectedOption.cardioSubType && <span> • {selectedOption.cardioSubType}</span>}
-                <span> • {selectedOption.durationMinutes} min</span>
-              </div>
+              {!isRestDay && (
+                <div className="text-xs opacity-80">
+                  <span className="font-medium">{getSessionTypeLabel(selectedOption.sessionType)}</span>
+                  {selectedOption.boulderSubType && <span> • {selectedOption.boulderSubType}</span>}
+                  {selectedOption.cardioSubType && <span> • {selectedOption.cardioSubType}</span>}
+                  <span> • {selectedOption.durationMinutes} min</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Exercises preview */}
-          <div className="mt-4 pt-3 border-t border-white/10">
-            <div className="text-[10px] uppercase tracking-wider font-medium opacity-60 mb-2">Exercises</div>
-            <div className="space-y-1">
-              {selectedOption.exercises.map((ex, i) => (
-                <div key={i} className="text-sm flex justify-between">
-                  <span className="opacity-90">{ex.name}</span>
-                  <span className="opacity-60 text-xs">
-                    {ex.sets && `${ex.sets}×`}{ex.reps || ''}
-                  </span>
-                </div>
-              ))}
+          {/* Exercises/Activities preview */}
+          {selectedOption.exercises.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-white/10">
+              <div className="text-[10px] uppercase tracking-wider font-medium opacity-60 mb-2">
+                {isRestDay ? 'Suggested Activities' : 'Exercises'}
+              </div>
+              <div className="space-y-1">
+                {selectedOption.exercises.map((ex, i) => (
+                  <div key={i} className="text-sm flex justify-between">
+                    <span className="opacity-90">{ex.name}</span>
+                    <span className="opacity-60 text-xs">
+                      {ex.sets && `${ex.sets}×`}{ex.reps || ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Recovery notes */}
           {selectedOption.recoveryNotes && (
@@ -226,13 +241,23 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
           )}
         </div>
 
-        <button
-          onClick={handleStartTraining}
-          className="w-full btn-primary flex items-center justify-center gap-2 py-4"
-        >
-          <Play size={18} strokeWidth={2} />
-          <span className="font-semibold tracking-wide">Start Training</span>
-        </button>
+        {/* Show Start Training button only for non-rest days */}
+        {!isRestDay && (
+          <button
+            onClick={handleStartTraining}
+            className="w-full btn-primary flex items-center justify-center gap-2 py-4 mt-4"
+          >
+            <Play size={18} strokeWidth={2} />
+            <span className="font-semibold tracking-wide">Start Training</span>
+          </button>
+        )}
+
+        {/* Rest day encouragement message */}
+        {isRestDay && (
+          <div className="mt-4 text-center text-zinc-500 text-sm">
+            <span className="text-violet-400">✨</span> Rest is when you get stronger <span className="text-violet-400">✨</span>
+          </div>
+        )}
       </div>
     )
   }
@@ -293,12 +318,13 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
 
       <div className="space-y-2">
         {options?.map((option, index) => {
-          const Icon = sessionIcons[option.sessionType] || Dumbbell
+          const isRestDay = option.isRestDay || option.sessionType === 'rest'
+          const Icon = isRestDay ? Moon : (sessionIcons[option.sessionType] || Dumbbell)
           return (
             <button
               key={index}
               onClick={() => handleSelectOption(option)}
-              className={`w-full p-4 rounded-xl bg-gradient-to-r ${effortColors[option.effort]} transition-all text-left shadow-lg hover:scale-[1.01] active:scale-[0.99]`}
+              className={`w-full p-4 rounded-xl bg-gradient-to-r ${effortColors[option.effort] || effortColors.rest} transition-all text-left shadow-lg hover:scale-[1.01] active:scale-[0.99]`}
             >
               <div className="flex items-start gap-3">
                 <div className="bg-black/20 p-2 rounded-lg">
@@ -308,16 +334,26 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold">{option.title}</span>
                     <span className="text-[10px] uppercase tracking-wider opacity-75 bg-black/20 px-2 py-0.5 rounded">
-                      {effortLabels[option.effort]}
+                      {effortLabels[option.effort] || 'Rest'}
                     </span>
                   </div>
                   <p className="text-sm opacity-90 mb-1">{option.description}</p>
                   <div className="flex items-center gap-2 text-xs opacity-70">
                     <span>{getSessionTypeLabel(option.sessionType)}</span>
-                    <span>•</span>
-                    <span>{option.durationMinutes} min</span>
-                    <span>•</span>
-                    <span>{option.exercises.length} exercises</span>
+                    {!isRestDay && (
+                      <>
+                        <span>•</span>
+                        <span>{option.durationMinutes} min</span>
+                        <span>•</span>
+                        <span>{option.exercises.length} exercises</span>
+                      </>
+                    )}
+                    {isRestDay && option.exercises.length > 0 && (
+                      <>
+                        <span>•</span>
+                        <span>{option.exercises.length} activities</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
