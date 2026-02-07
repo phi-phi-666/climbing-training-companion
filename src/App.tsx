@@ -2,19 +2,23 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import Dashboard from './components/Dashboard'
 import LogSession from './components/LogSession'
 import History from './components/History'
+import { ToastProvider } from './components/ui/Toast'
+import ErrorBoundary from './components/ui/ErrorBoundary'
 import { Home, Plus, Calendar } from 'lucide-react'
 
 function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-void text-zinc-100 pb-24">
-        <main className="max-w-lg mx-auto p-4">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/log" element={<LogSession />} />
-            <Route path="/history" element={<History />} />
-          </Routes>
-        </main>
+    <ErrorBoundary>
+      <ToastProvider>
+        <BrowserRouter>
+          <div className="min-h-screen bg-void text-zinc-100 pb-24">
+            <main className="max-w-lg mx-auto p-4">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/log" element={<LogSession />} />
+                <Route path="/history" element={<History />} />
+              </Routes>
+            </main>
 
         <nav className="fixed bottom-0 left-0 right-0 bg-void-100/95 backdrop-blur-xl border-t border-violet-900/30">
           <div className="max-w-lg mx-auto flex justify-around">
@@ -58,9 +62,11 @@ function App() {
               <span className="text-xs tracking-wide">History</span>
             </NavLink>
           </div>
-        </nav>
-      </div>
-    </BrowserRouter>
+          </nav>
+        </div>
+      </BrowserRouter>
+    </ToastProvider>
+  </ErrorBoundary>
   )
 }
 

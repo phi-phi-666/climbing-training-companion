@@ -21,6 +21,7 @@ import Modal from './ui/Modal'
 import Accordion from './ui/Accordion'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
+import { useToast } from './ui/Toast'
 import type { TodayOption } from '../services/ai'
 import {
   Mountain,
@@ -38,6 +39,7 @@ import {
   Clock,
   Dumbbell as ExerciseIcon,
   StickyNote,
+  Loader2,
   type LucideIcon
 } from 'lucide-react'
 
@@ -60,6 +62,9 @@ const cardioIcons: Record<string, LucideIcon> = {
   run: Footprints,
   row: Rows3
 }
+
+// Duration presets
+const durationPresets = [30, 60, 90, 120]
 
 function getDateOptions(): { value: string; label: string }[] {
   const options = []
@@ -88,6 +93,7 @@ function getDateOptions(): { value: string; label: string }[] {
 export default function LogSession() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { showToast } = useToast()
   const prefill = (location.state as { prefill?: TodayOption })?.prefill
 
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0])
@@ -106,6 +112,8 @@ export default function LogSession() {
   const [saving, setSaving] = useState(false)
   const [showWarmup, setShowWarmup] = useState(false)
   const [showCooldown, setShowCooldown] = useState(false)
+  const [warmupFlash, setWarmupFlash] = useState(false)
+  const [cooldownFlash, setCooldownFlash] = useState(false)
 
   // Handle prefill from Today's Options
   useEffect(() => {
@@ -177,6 +185,20 @@ export default function LogSession() {
     setWarmup(null)
     setCooldown(null)
   }, [sessionType, boulderSubType])
+
+  // Flash animation when warmup is generated
+  const handleWarmupGenerated = (newWarmup: string) => {
+    setWarmup(newWarmup)
+    setWarmupFlash(true)
+    setTimeout(() => setWarmupFlash(false), 600)
+  }
+
+  // Flash animation when cooldown is generated
+  const handleCooldownGenerated = (newCooldown: string) => {
+    setCooldown(newCooldown)
+    setCooldownFlash(true)
+    setTimeout(() => setCooldownFlash(false), 600)
+  }
 
   const dateOptions = getDateOptions()
   const isCrossfit = sessionType === 'crossfit'
@@ -284,6 +306,7 @@ export default function LogSession() {
       cooldown: cooldown || undefined
     })
 
+    showToast('Session saved!')
     navigate('/')
   }
 
@@ -296,10 +319,10 @@ export default function LogSession() {
         </div>
       )}
 
-      {/* Date selector - compact horizontal scroll */}
+      {/* Date selector - all 7 days */}
       <div className="card py-3">
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-          {dateOptions.slice(0, 5).map((option) => (
+          {dateOptions.map((option) => (
             <button
               key={option.value}
               onClick={() => setSessionDate(option.value)}
@@ -381,10 +404,27 @@ export default function LogSession() {
         )}
       </div>
 
-      {/* Duration - compact inline */}
+      {/* Duration - with preset buttons */}
       <div className="card py-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Clock size={16} className="text-zinc-500" />
+          <div className="flex gap-1.5">
+            {durationPresets.map((preset) => (
+              <button
+                key={preset}
+                onClick={() => setDuration(preset)}
+                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                  duration === preset
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-void-100 text-zinc-500 hover:text-zinc-300 border border-violet-900/20'
+                }`}
+              >
+                {preset}m
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex items-center gap-3">
-          <Clock size={18} className="text-zinc-500" />
           <input
             type="range"
             min="15"
@@ -398,7 +438,7 @@ export default function LogSession() {
         </div>
       </div>
 
-      {/* AI Warmup/Cooldown - compact buttons */}
+      {/* AI Warmup/Cooldown - compact buttons with flash animation */}
       <div className="flex gap-2">
         <button
           onClick={() => setShowWarmup(true)}
@@ -406,7 +446,7 @@ export default function LogSession() {
             warmup
               ? 'bg-rose-600 text-white'
               : 'bg-gradient-to-r from-rose-600 to-rose-500 text-white hover:from-rose-500 hover:to-rose-400'
-          }`}
+          } ${warmupFlash ? 'success-flash' : ''}`}
         >
           <Sparkles size={18} strokeWidth={1.5} />
           <span className="text-sm font-medium">{warmup ? 'Warmup ✓' : 'Warmup'}</span>
@@ -417,7 +457,7 @@ export default function LogSession() {
             cooldown
               ? 'bg-accent-600 text-white'
               : 'bg-gradient-to-r from-accent-600 to-accent-500 text-white hover:from-accent-500 hover:to-accent-400'
-          }`}
+          } ${cooldownFlash ? 'success-flash' : ''}`}
         >
           <StretchHorizontal size={18} strokeWidth={1.5} />
           <span className="text-sm font-medium">{cooldown ? 'Cooldown ✓' : 'Cooldown'}</span>
@@ -558,13 +598,20 @@ export default function LogSession() {
         />
       </Accordion>
 
-      {/* Save button - always visible */}
+      {/* Save button with spinner */}
       <button
         onClick={handleSave}
         disabled={saving}
-        className="btn-primary w-full py-4 font-semibold tracking-wide"
+        className="btn-primary w-full py-4 font-semibold tracking-wide flex items-center justify-center gap-2"
       >
-        {saving ? 'Saving...' : 'Save Session'}
+        {saving ? (
+          <>
+            <Loader2 size={20} className="spinner" />
+            <span>Saving...</span>
+          </>
+        ) : (
+          <span>Save Session</span>
+        )}
       </button>
 
       <Modal
@@ -577,7 +624,7 @@ export default function LogSession() {
           sessionType={sessionType}
           boulderSubType={sessionType === 'boulder' ? boulderSubType : undefined}
           onClose={() => setShowWarmup(false)}
-          onWarmupGenerated={setWarmup}
+          onWarmupGenerated={handleWarmupGenerated}
           savedWarmup={warmup}
         />
       </Modal>
@@ -592,7 +639,7 @@ export default function LogSession() {
           sessionType={sessionType}
           boulderSubType={sessionType === 'boulder' ? boulderSubType : undefined}
           onClose={() => setShowCooldown(false)}
-          onCooldownGenerated={setCooldown}
+          onCooldownGenerated={handleCooldownGenerated}
           savedCooldown={cooldown}
           muscleGroups={selectedGroups}
           exercises={selectedExercises}

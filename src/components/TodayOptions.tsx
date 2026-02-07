@@ -243,7 +243,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
       <div className="card">
         <button
           onClick={handleGenerate}
-          className="w-full btn-primary flex items-center justify-center gap-3 py-4"
+          className="w-full btn-primary-glow flex items-center justify-center gap-3 py-4"
           disabled={loading}
         >
           <Sparkles size={20} strokeWidth={1.5} />

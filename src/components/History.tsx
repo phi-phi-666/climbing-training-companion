@@ -104,6 +104,7 @@ export default function History() {
 
       {sessions.length === 0 ? (
         <div className="card text-center py-12">
+          <CalendarDays size={48} strokeWidth={1} className="mx-auto text-zinc-600 mb-4" />
           <p className="text-zinc-400">No sessions recorded yet</p>
           <p className="text-zinc-500 text-sm mt-2">Start logging your training!</p>
         </div>
