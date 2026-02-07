@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { generateWarmup, buildAIContext } from '../services/ai'
 import { useSessionHistory } from '../hooks/useSessionHistory'
 import { sessionTypes, boulderSubTypes } from '../data/exercises'
+import WorkoutTimer from './WorkoutTimer'
+import { Play, RefreshCw } from 'lucide-react'
 import type { Session } from '../services/db'
 import type { BoulderSubType } from '../data/exercises'
 
@@ -23,6 +25,7 @@ export default function WarmupGenerator({
   const [warmup, setWarmup] = useState<string | null>(savedWarmup ?? null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showTimer, setShowTimer] = useState(false)
 
   const lastSessions = useSessionHistory(7)
 
@@ -97,10 +100,10 @@ export default function WarmupGenerator({
         </div>
       )}
 
-      {warmup && (
+      {warmup && !showTimer && (
         <div className="space-y-4">
-          <div className="bg-stone-800 rounded-xl p-4 border border-stone-700">
-            <div className="text-sm leading-relaxed text-stone-200">
+          <div className="bg-void-100 rounded-xl p-4 border border-violet-900/20">
+            <div className="text-sm leading-relaxed text-zinc-200">
               {warmup.split('\n').map((line, i) => (
                 <p key={i} className={line.trim() ? 'mb-2' : 'mb-4'}>
                   {line}
@@ -109,19 +112,40 @@ export default function WarmupGenerator({
             </div>
           </div>
 
+          <button
+            onClick={() => setShowTimer(true)}
+            className="w-full btn-primary flex items-center justify-center gap-2 py-3"
+          >
+            <Play size={18} strokeWidth={2} />
+            <span>Start Timer</span>
+          </button>
+
           <div className="flex gap-3">
             <button
               onClick={handleGenerate}
-              className="btn-secondary flex-1"
+              className="btn-secondary flex-1 flex items-center justify-center gap-2"
               disabled={loading}
             >
-              Regenerate
+              <RefreshCw size={16} />
+              <span>Regenerate</span>
             </button>
-            <button onClick={onClose} className="btn-primary flex-1">
+            <button onClick={onClose} className="btn-secondary flex-1">
               Done
             </button>
           </div>
         </div>
+      )}
+
+      {warmup && showTimer && (
+        <WorkoutTimer
+          routine={warmup}
+          title="Warmup"
+          onClose={() => setShowTimer(false)}
+          onComplete={() => {
+            setShowTimer(false)
+            onClose()
+          }}
+        />
       )}
     </div>
   )
