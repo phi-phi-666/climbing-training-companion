@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { generateCooldown, buildAIContext } from '../services/ai'
 import { useSessionHistory } from '../hooks/useSessionHistory'
 import { sessionTypes, boulderSubTypes } from '../data/exercises'
 import WorkoutTimer from './WorkoutTimer'
-import { Play, RefreshCw } from 'lucide-react'
+import { Play, RefreshCw, AlertTriangle } from 'lucide-react'
 import type { Session } from '../services/db'
 import type { BoulderSubType } from '../data/exercises'
 
@@ -30,6 +30,12 @@ export default function CooldownGenerator({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showTimer, setShowTimer] = useState(false)
+  const [showMismatchWarning, setShowMismatchWarning] = useState(false)
+
+  // Track which session type the current cooldown was generated for
+  const generatedForRef = useRef<{ type: string; subType?: string } | null>(
+    savedCooldown ? { type: sessionType, subType: boulderSubType } : null
+  )
 
   const lastSessions = useSessionHistory(7)
 
@@ -39,14 +45,39 @@ export default function CooldownGenerator({
     }
   }, [savedCooldown])
 
+  const getSessionLabel = (type?: string, subType?: string) => {
+    const t = type || sessionType
+    const st = subType || boulderSubType
+    const typeInfo = sessionTypes.find(s => s.value === t)
+    if (t === 'boulder' && st) {
+      const subTypeInfo = boulderSubTypes.find(s => s.value === st)
+      return `${typeInfo?.label} - ${subTypeInfo?.label}`
+    }
+    return typeInfo?.label || t
+  }
+
+  const currentSessionLabel = getSessionLabel()
+  const generatedForLabel = generatedForRef.current
+    ? getSessionLabel(generatedForRef.current.type, generatedForRef.current.subType)
+    : null
+
+  // Check if current session type differs from what cooldown was generated for
+  const hasMismatch = generatedForRef.current && (
+    generatedForRef.current.type !== sessionType ||
+    (sessionType === 'boulder' && generatedForRef.current.subType !== boulderSubType)
+  )
+
   const handleGenerate = async () => {
     setLoading(true)
     setError(null)
+    setShowMismatchWarning(false)
 
     try {
       const context = buildAIContext(lastSessions, null)
       const result = await generateCooldown(sessionType, context, muscleGroups, exercises, boulderSubType)
       setCooldown(result)
+      // Update what this cooldown was generated for
+      generatedForRef.current = { type: sessionType, subType: boulderSubType }
       onCooldownGenerated?.(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate cooldown')
@@ -55,25 +86,66 @@ export default function CooldownGenerator({
     }
   }
 
-  const getSessionLabel = () => {
-    const type = sessionTypes.find(t => t.value === sessionType)
-    if (sessionType === 'boulder' && boulderSubType) {
-      const subType = boulderSubTypes.find(t => t.value === boulderSubType)
-      return `${type?.label} - ${subType?.label}`
+  const handleRegenerateClick = () => {
+    if (hasMismatch) {
+      setShowMismatchWarning(true)
+    } else {
+      handleGenerate()
     }
-    return type?.label || sessionType
+  }
+
+  const handleConfirmRegenerate = () => {
+    setShowMismatchWarning(false)
+    handleGenerate()
+  }
+
+  const handleCancelRegenerate = () => {
+    setShowMismatchWarning(false)
   }
 
   const hasMuscleGroups = muscleGroups && muscleGroups.length > 0
 
   return (
     <div className="space-y-4">
-      {!cooldown && !loading && (
+      {/* Mismatch warning dialog */}
+      {showMismatchWarning && (
+        <div className="bg-amber-900/30 border border-amber-700/50 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-amber-200 text-sm font-medium mb-2">
+                Session type changed
+              </p>
+              <p className="text-amber-300/80 text-sm mb-3">
+                Current cooldown was generated for <span className="font-semibold">{generatedForLabel}</span>.
+                <br />
+                Regenerate for <span className="font-semibold">{currentSessionLabel}</span>?
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleConfirmRegenerate}
+                  className="flex-1 bg-amber-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-amber-500 transition-colors"
+                >
+                  Yes, regenerate
+                </button>
+                <button
+                  onClick={handleCancelRegenerate}
+                  className="flex-1 bg-void-100 text-zinc-300 py-2 px-3 rounded-lg text-sm font-medium hover:bg-void-50 transition-colors border border-violet-900/20"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!cooldown && !loading && !showMismatchWarning && (
         <div className="text-center py-4">
           <p className="text-stone-300 mb-4">
             Generate an AI-powered cooldown routine tailored for your{' '}
             <span className="font-semibold text-accent-400">
-              {getSessionLabel()}
+              {currentSessionLabel}
             </span>{' '}
             session to aid recovery.
           </p>
@@ -95,7 +167,7 @@ export default function CooldownGenerator({
       {loading && (
         <div className="text-center py-8">
           <div className="inline-block w-8 h-8 border-4 border-accent-500 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-stone-400">Generating your cooldown...</p>
+          <p className="text-stone-400">Generating cooldown for {currentSessionLabel}...</p>
         </div>
       )}
 
@@ -111,8 +183,15 @@ export default function CooldownGenerator({
         </div>
       )}
 
-      {cooldown && !showTimer && (
+      {cooldown && !showTimer && !showMismatchWarning && (
         <div className="space-y-4">
+          {/* Show mismatch indicator if applicable */}
+          {hasMismatch && (
+            <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg px-3 py-2 text-xs text-amber-400">
+              ⚠️ Generated for {generatedForLabel} (current: {currentSessionLabel})
+            </div>
+          )}
+
           <div className="bg-void-100 rounded-xl p-4 border border-violet-900/20">
             <div className="text-sm leading-relaxed text-zinc-200">
               {cooldown.split('\n').map((line, i) => (
@@ -133,7 +212,7 @@ export default function CooldownGenerator({
 
           <div className="flex gap-3">
             <button
-              onClick={handleGenerate}
+              onClick={handleRegenerateClick}
               className="btn-secondary flex-1 flex items-center justify-center gap-2"
               disabled={loading}
             >

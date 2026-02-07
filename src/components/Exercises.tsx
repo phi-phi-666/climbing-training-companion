@@ -4,6 +4,7 @@ import {
   categoryLabels,
   type ExerciseInfo
 } from '../data/exerciseDescriptions'
+import Accordion from './ui/Accordion'
 import {
   Search,
   Flame,
@@ -29,15 +30,15 @@ const categoryIcons: Record<ExerciseInfo['category'], typeof Flame> = {
   fingers: Hand
 }
 
-// Category colors
-const categoryColors: Record<ExerciseInfo['category'], string> = {
-  warmup: 'bg-orange-500',
-  strength: 'bg-rose-500',
-  mobility: 'bg-violet-500',
-  climbing: 'bg-amber-500',
-  cardio: 'bg-green-500',
-  core: 'bg-blue-500',
-  fingers: 'bg-pink-500'
+// Category colors for badges
+const categoryBadgeColors: Record<ExerciseInfo['category'], string> = {
+  warmup: 'bg-orange-500/20 text-orange-400',
+  strength: 'bg-rose-500/20 text-rose-400',
+  mobility: 'bg-violet-500/20 text-violet-400',
+  climbing: 'bg-amber-500/20 text-amber-400',
+  cardio: 'bg-green-500/20 text-green-400',
+  core: 'bg-blue-500/20 text-blue-400',
+  fingers: 'bg-pink-500/20 text-pink-400'
 }
 
 // Order of categories
@@ -53,7 +54,6 @@ const categoryOrder: ExerciseInfo['category'][] = [
 
 export default function Exercises() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<ExerciseInfo['category'] | null>(null)
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null)
 
   // Group exercises by category
@@ -65,40 +65,36 @@ export default function Exercises() {
     return grouped
   }, [])
 
-  // Filter exercises based on search and category
-  const filteredExercises = useMemo(() => {
-    let exercises = exerciseDatabase
-
-    // Filter by category if selected
-    if (selectedCategory) {
-      exercises = exercises.filter(e => e.category === selectedCategory)
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      exercises = exercises.filter(
-        e =>
-          e.name.toLowerCase().includes(query) ||
-          e.namePl.toLowerCase().includes(query) ||
-          e.description.toLowerCase().includes(query)
-      )
-    }
-
-    return exercises
-  }, [searchQuery, selectedCategory])
-
-  // Group filtered exercises by category for display
-  const groupedFiltered = useMemo(() => {
+  // Filter exercises based on search
+  const filteredByCategory = useMemo(() => {
     const grouped: Record<string, ExerciseInfo[]> = {}
-    for (const exercise of filteredExercises) {
-      if (!grouped[exercise.category]) {
-        grouped[exercise.category] = []
+
+    for (const category of categoryOrder) {
+      let exercises = exercisesByCategory[category] || []
+
+      // Filter by search query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase()
+        exercises = exercises.filter(
+          e =>
+            e.name.toLowerCase().includes(query) ||
+            e.namePl.toLowerCase().includes(query) ||
+            e.description.toLowerCase().includes(query)
+        )
       }
-      grouped[exercise.category].push(exercise)
+
+      if (exercises.length > 0) {
+        grouped[category] = exercises
+      }
     }
+
     return grouped
-  }, [filteredExercises])
+  }, [searchQuery, exercisesByCategory])
+
+  // Total filtered count
+  const totalFiltered = useMemo(() => {
+    return Object.values(filteredByCategory).reduce((sum, arr) => sum + arr.length, 0)
+  }, [filteredByCategory])
 
   const toggleExercise = (name: string) => {
     setExpandedExercise(prev => prev === name ? null : name)
@@ -108,10 +104,7 @@ export default function Exercises() {
     setSearchQuery('')
   }
 
-  const clearFilters = () => {
-    setSearchQuery('')
-    setSelectedCategory(null)
-  }
+  const hasResults = Object.keys(filteredByCategory).length > 0
 
   return (
     <div className="space-y-3 pt-2">
@@ -123,7 +116,7 @@ export default function Exercises() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search exercises..."
+            placeholder="Search exercises (EN/PL)..."
             className="input pl-10 pr-10"
           />
           {searchQuery && (
@@ -135,126 +128,93 @@ export default function Exercises() {
             </button>
           )}
         </div>
+
+        {/* Search results count */}
+        {searchQuery && (
+          <div className="mt-2 text-xs text-zinc-500">
+            {totalFiltered} result{totalFiltered !== 1 ? 's' : ''} for "{searchQuery}"
+          </div>
+        )}
       </div>
 
-      {/* Category filter pills */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-        {categoryOrder.map((category) => {
-          const Icon = categoryIcons[category]
-          const isSelected = selectedCategory === category
-          const count = exercisesByCategory[category]?.length || 0
-
-          return (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(isSelected ? null : category)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex-shrink-0 ${
-                isSelected
-                  ? `${categoryColors[category]} text-white`
-                  : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
-              }`}
-            >
-              <Icon size={14} strokeWidth={1.5} />
-              <span>{categoryLabels[category].en}</span>
-              <span className="opacity-60">({count})</span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Results count & clear */}
-      {(searchQuery || selectedCategory) && (
-        <div className="flex items-center justify-between px-1">
-          <span className="text-zinc-500 text-sm">
-            {filteredExercises.length} exercise{filteredExercises.length !== 1 ? 's' : ''} found
-          </span>
-          <button
-            onClick={clearFilters}
-            className="text-rose-400 text-sm hover:text-rose-300"
-          >
-            Clear filters
-          </button>
-        </div>
-      )}
-
-      {/* Exercise list grouped by category */}
-      {filteredExercises.length === 0 ? (
+      {/* No results */}
+      {!hasResults && (
         <div className="card text-center py-12">
           <Search size={48} strokeWidth={1} className="mx-auto text-zinc-600 mb-4" />
           <p className="text-zinc-400">No exercises found</p>
           <p className="text-zinc-500 text-sm mt-2">Try a different search term</p>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {categoryOrder.map((category) => {
-            const exercises = groupedFiltered[category]
-            if (!exercises || exercises.length === 0) return null
+      )}
 
-            const Icon = categoryIcons[category]
+      {/* Categories as accordions */}
+      {categoryOrder.map((category) => {
+        const exercises = filteredByCategory[category]
+        if (!exercises || exercises.length === 0) return null
 
-            return (
-              <div key={category} className="card">
-                {/* Category header */}
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`p-1.5 rounded-lg ${categoryColors[category]}`}>
-                    <Icon size={14} strokeWidth={1.5} className="text-white" />
-                  </div>
-                  <h2 className="font-display text-sm tracking-wide text-zinc-300">
-                    {categoryLabels[category].en.toUpperCase()}
-                  </h2>
-                  <span className="text-zinc-600 text-xs">
-                    {categoryLabels[category].pl}
-                  </span>
-                  <span className="text-zinc-600 text-xs ml-auto">
-                    {exercises.length}
-                  </span>
-                </div>
+        const Icon = categoryIcons[category]
+        const totalInCategory = exercisesByCategory[category]?.length || 0
+        const isFiltered = searchQuery.trim() !== ''
 
-                {/* Exercises */}
-                <div className="space-y-1">
-                  {exercises.map((exercise) => {
-                    const isExpanded = expandedExercise === exercise.name
+        return (
+          <Accordion
+            key={category}
+            title={categoryLabels[category].en.toUpperCase()}
+            icon={<Icon size={16} />}
+            badge={isFiltered ? exercises.length : totalInCategory}
+            defaultOpen={isFiltered} // Auto-expand when searching
+          >
+            <div className="space-y-1.5">
+              {/* Polish category name */}
+              <div className="text-[10px] text-zinc-600 uppercase tracking-wider mb-2">
+                {categoryLabels[category].pl}
+              </div>
 
-                    return (
-                      <div
-                        key={exercise.name}
-                        className="bg-void-100 rounded-xl overflow-hidden border border-violet-900/20"
-                      >
-                        <button
-                          onClick={() => toggleExercise(exercise.name)}
-                          className="w-full p-3 flex items-center justify-between text-left"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm text-zinc-200">
-                              {exercise.name}
-                            </div>
-                            <div className="text-xs text-zinc-500">
-                              {exercise.namePl}
-                            </div>
-                          </div>
-                          {isExpanded ? (
-                            <ChevronUp size={16} className="text-zinc-500 flex-shrink-0" />
-                          ) : (
-                            <ChevronDown size={16} className="text-zinc-500 flex-shrink-0" />
-                          )}
-                        </button>
+              {exercises.map((exercise) => {
+                const isExpanded = expandedExercise === exercise.name
 
-                        {isExpanded && (
-                          <div className="px-3 pb-3 border-t border-violet-900/20 pt-3">
-                            <p className="text-sm text-zinc-400 leading-relaxed">
-                              {exercise.description}
-                            </p>
-                          </div>
+                return (
+                  <div
+                    key={exercise.name}
+                    className="bg-void-50 rounded-xl overflow-hidden border border-violet-900/10"
+                  >
+                    <button
+                      onClick={() => toggleExercise(exercise.name)}
+                      className="w-full p-3 flex items-center justify-between text-left hover:bg-void-100 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-zinc-200">
+                          {exercise.name}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-0.5">
+                          {exercise.namePl}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${categoryBadgeColors[category]}`}>
+                          {categoryLabels[category].en}
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp size={16} className="text-zinc-500 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown size={16} className="text-zinc-500 flex-shrink-0" />
                         )}
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="px-3 pb-3 border-t border-violet-900/10 pt-3 bg-void-100/50">
+                        <p className="text-sm text-zinc-400 leading-relaxed">
+                          {exercise.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </Accordion>
+        )
+      })}
     </div>
   )
 }
