@@ -155,11 +155,11 @@ export default function Dashboard() {
         {recentSessions.length > 0 ? (
           <ul className="space-y-1">
             {recentSessions.map((session) => {
-              const Icon = sessionIcons[session.type]
+              const Icon = sessionIcons[session.type] || Dumbbell
               return (
                 <li key={session.id} className="flex justify-between items-center py-3 px-3 rounded-lg hover:bg-void-50/50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <Icon size={18} strokeWidth={1.5} className="text-rose-400" />
+                    {Icon && <Icon size={18} strokeWidth={1.5} className="text-rose-400" />}
                     <span className="font-medium text-sm">{getSessionDisplayLabel(session)}</span>
                   </div>
                   <div className="text-zinc-500 text-xs">

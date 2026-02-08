@@ -635,46 +635,82 @@ export interface ClimbingSession {
   structure: ClimbingSessionPhase[]
   exercises?: SuggestedExercise[]
   tips?: string
+  intensityLevel?: 'light' | 'moderate' | 'hard' | 'max'
+  gradeRange?: string
 }
 
-function buildClimbingSessionPrompt(type: 'boulder' | 'lead', context: AIContext): string {
-  const boulderThemes = [
-    'Power Endurance (4x4s)',
-    'Limit Bouldering (project level)',
-    'Volume Session (flash level, high quantity)',
-    'Interval Training (ON/OFF cycles)',
-    'Technique Focus (footwork, body positioning)',
-    'Slab Practice (balance, friction)',
-    'Overhang Power (steep terrain)',
-    'Competition Simulation (onsight attempts)',
-    'Weakness Targeting (slopers/crimps/pinches)',
-    'Campus Ladder Work'
-  ]
+// Session focus options for user selection
+export const BOULDER_FOCUS_OPTIONS = [
+  { value: 'power', label: 'Power', description: 'Limit moves, max strength' },
+  { value: 'endurance', label: 'Endurance', description: '4x4s, circuits, volume' },
+  { value: 'technique', label: 'Technique', description: 'Footwork, body position' },
+  { value: 'project', label: 'Project', description: 'Work your project grade' },
+  { value: 'volume', label: 'Volume', description: 'Many problems, flash level' },
+  { value: 'weakness', label: 'Weakness', description: 'Slopers, crimps, or style' },
+  { value: 'surprise', label: 'Surprise Me', description: 'AI picks the theme' }
+] as const
 
-  const leadThemes = [
-    'Endurance Laps (sub-max routes)',
-    'Redpoint Burns (project attempts)',
-    'Onsight Practice (new routes)',
-    'Route Reading Focus (visualization)',
-    'Rest Position Practice (shaking out)',
-    'Link Training (sections of project)',
-    'Volume Day (many easy-moderate routes)',
-    'Mental Training (mock lead falls)',
-    'Clipping Practice (efficiency)',
-    'Pacing Work (consistent movement)'
-  ]
+export const LEAD_FOCUS_OPTIONS = [
+  { value: 'endurance', label: 'Endurance', description: 'Laps, sustained climbing' },
+  { value: 'redpoint', label: 'Redpoint', description: 'Project attempts' },
+  { value: 'onsight', label: 'Onsight', description: 'New routes, route reading' },
+  { value: 'mental', label: 'Mental', description: 'Fall practice, fear work' },
+  { value: 'technique', label: 'Technique', description: 'Resting, clipping, pacing' },
+  { value: 'volume', label: 'Volume', description: 'Many easy-moderate routes' },
+  { value: 'surprise', label: 'Surprise Me', description: 'AI picks the theme' }
+] as const
 
-  const themes = type === 'boulder' ? boulderThemes : leadThemes
-  const randomThemes = themes.sort(() => Math.random() - 0.5).slice(0, 3)
+export type BoulderFocus = typeof BOULDER_FOCUS_OPTIONS[number]['value']
+export type LeadFocus = typeof LEAD_FOCUS_OPTIONS[number]['value']
+
+function buildClimbingSessionPrompt(
+  type: 'boulder' | 'lead',
+  context: AIContext,
+  focus?: BoulderFocus | LeadFocus,
+  intensity?: 'light' | 'moderate' | 'hard' | 'max'
+): string {
+  const boulderThemesByFocus: Record<string, string[]> = {
+    power: ['Limit Bouldering (project level)', 'Campus Ladder Work', 'Max Hangs Between Problems'],
+    endurance: ['Power Endurance (4x4s)', 'Interval Training (ON/OFF cycles)', 'Circuit Training'],
+    technique: ['Technique Focus (footwork, body positioning)', 'Slab Practice (balance, friction)', 'Silent Feet Drills'],
+    project: ['Project Session (redpoint burns)', 'Move Isolation', 'Link Training'],
+    volume: ['Volume Session (flash level, high quantity)', 'Pyramid (up and down grades)', 'Flash Attempts'],
+    weakness: ['Weakness Targeting (slopers/crimps/pinches)', 'Overhang Power (steep terrain)', 'Compression Training'],
+    surprise: ['Power Endurance (4x4s)', 'Limit Bouldering', 'Technique Focus', 'Competition Simulation']
+  }
+
+  const leadThemesByFocus: Record<string, string[]> = {
+    endurance: ['Endurance Laps (sub-max routes)', 'ARC Training', 'Volume Day'],
+    redpoint: ['Redpoint Burns (project attempts)', 'Link Training (sections)', 'Rehearsal Climbs'],
+    onsight: ['Onsight Practice (new routes)', 'Route Reading Focus', 'Flash Attempts'],
+    mental: ['Mental Training (mock lead falls)', 'Exposure Therapy', 'Commitment Moves'],
+    technique: ['Rest Position Practice (shaking out)', 'Clipping Practice', 'Pacing Work'],
+    volume: ['Volume Day (many easy-moderate routes)', 'Mileage Session', 'Active Recovery Climbing'],
+    surprise: ['Endurance Laps', 'Onsight Practice', 'Redpoint Burns', 'Technique Work']
+  }
+
+  const themeMap = type === 'boulder' ? boulderThemesByFocus : leadThemesByFocus
+  const selectedFocus = focus || 'surprise'
+  const themes = themeMap[selectedFocus] || themeMap['surprise']
+  const randomThemes = themes.sort(() => Math.random() - 0.5).slice(0, 2)
+
+  const intensityGuidance = intensity ? {
+    light: 'Keep intensity LOW - focus on movement quality over difficulty. Stay 2-3 grades below max.',
+    moderate: 'MODERATE intensity - mix of comfortable and challenging. Stay around flash level.',
+    hard: 'HIGH intensity session - push toward limit. Expect to fall and try hard.',
+    max: 'MAXIMUM effort - project-level attempts. Full rest between burns. Quality over quantity.'
+  }[intensity] : ''
 
   return `Generate a detailed ${type === 'boulder' ? 'BOULDERING' : 'LEAD CLIMBING'} session plan.
 
 Today is ${context.currentDay}.
+${focus && focus !== 'surprise' ? `\nUser selected focus: ${focus.toUpperCase()}` : ''}
+${intensityGuidance ? `\nIntensity: ${intensityGuidance}` : ''}
 
 Recent activity (last 7 days):
 ${formatRecentSessions(context.lastSessions)}
 
-Consider these possible themes (pick one or combine): ${randomThemes.join(', ')}
+Theme options to consider: ${randomThemes.join(', ')}
 
 Requirements:
 - Create a structured session with clear phases (warmup already done separately)
@@ -683,15 +719,19 @@ Requirements:
 - Be creative and specific - not generic advice
 - Consider the recent training history for appropriate intensity
 - ${type === 'boulder' ? 'For bouldering: specify problem types, styles, and intensity' : 'For lead: specify route grades, number of routes, and rest periods'}
+- Make the session FUN and motivating, not just a list of instructions
+- Include variety within the session
 
 Return as JSON:
 {
   "type": "${type}",
   ${type === 'boulder' ? '"subType": "problems" | "circuits" | "campus" | "intervals",' : ''}
   "title": "Catchy 2-4 word title",
-  "description": "One sentence overview",
+  "description": "One sentence overview that gets the climber excited",
   "focus": "Main training goal",
   "durationMinutes": 90,
+  "intensityLevel": "light" | "moderate" | "hard" | "max",
+  "gradeRange": "e.g. V3-V5 or 5.10-5.11",
   "structure": [
     {
       "name": "Phase name",
@@ -699,7 +739,7 @@ Return as JSON:
       "details": "Specific instructions: grades, rest, technique cues"
     }
   ],
-  "tips": "One practical tip for this session"
+  "tips": "One practical tip for crushing this session"
 }
 
 IMPORTANT: Return valid JSON only. No markdown, no code blocks.`
@@ -707,9 +747,11 @@ IMPORTANT: Return valid JSON only. No markdown, no code blocks.`
 
 export async function generateClimbingSession(
   type: 'boulder' | 'lead',
-  context: AIContext
+  context: AIContext,
+  focus?: BoulderFocus | LeadFocus,
+  intensity?: 'light' | 'moderate' | 'hard' | 'max'
 ): Promise<ClimbingSession> {
-  const prompt = buildClimbingSessionPrompt(type, context)
+  const prompt = buildClimbingSessionPrompt(type, context, focus, intensity)
   const response = await callOpenRouter(prompt, { json: true })
   const cleanedResponse = stripMarkdownCodeBlock(response)
 

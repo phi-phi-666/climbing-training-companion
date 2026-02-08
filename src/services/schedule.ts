@@ -141,7 +141,7 @@ export function getDayName(dayOfWeek: DayOfWeek): string {
 // Session types allowed per location
 export const SESSION_TYPES_BY_LOCATION: Record<Location, string[]> = {
   home: ['hiit', 'mobility', 'core', 'hangboard'],
-  gym: ['gym', 'hiit', 'crossfit', 'cardio', 'mobility', 'hangboard'],
+  gym: ['gym', 'hiit', 'crossfit', 'cardio', 'mobility'],
   outdoor: ['cardio', 'mobility']
 }
 

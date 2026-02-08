@@ -15,8 +15,12 @@ import {
   generateClimbingSession,
   generateNonClimbingOptions,
   buildAIContext,
+  BOULDER_FOCUS_OPTIONS,
+  LEAD_FOCUS_OPTIONS,
   type ClimbingSession,
-  type TodayOption
+  type TodayOption,
+  type BoulderFocus,
+  type LeadFocus
 } from '../services/ai'
 import { useSessionHistory, useLastClimbingSession } from '../hooks/useSessionHistory'
 import { sessionTypes } from '../data/exercises'
@@ -32,7 +36,7 @@ import {
   Play,
   X,
   Sparkles,
-  Home,
+  Home as HomeIcon,
   Building2,
   TreePine,
   Calendar,
@@ -57,7 +61,7 @@ const sessionIcons: Record<string, LucideIcon> = {
 }
 
 const locationIcons: Record<Location, LucideIcon> = {
-  home: Home,
+  home: HomeIcon,
   gym: Building2,
   outdoor: TreePine
 }
@@ -77,7 +81,8 @@ const STORAGE_KEY = 'alpha_smart_schedule_state'
 type ViewState =
   | { type: 'initial' }
   | { type: 'climbing_picker' }
-  | { type: 'climbing_session'; climbingType: ClimbingType; session: ClimbingSession | null; loading: boolean }
+  | { type: 'climbing_focus'; climbingType: ClimbingType }
+  | { type: 'climbing_session'; climbingType: ClimbingType; focus?: BoulderFocus | LeadFocus; session: ClimbingSession | null; loading: boolean }
   | { type: 'location_picker' }
   | { type: 'workout_options'; location: Location; options: TodayOption[] | null; loading: boolean }
   | { type: 'selected_workout'; option: TodayOption }
@@ -128,17 +133,23 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     }
   }, [viewState, todayStr])
 
-  const handleClimbingTypeSelect = async (type: ClimbingType) => {
-    setViewState({ type: 'climbing_session', climbingType: type, session: null, loading: true })
+  const handleClimbingTypeSelect = (type: ClimbingType) => {
+    // Go to focus picker instead of directly generating
+    setViewState({ type: 'climbing_focus', climbingType: type })
+    setError(null)
+  }
+
+  const handleFocusSelect = async (focus: BoulderFocus | LeadFocus, climbingType: ClimbingType) => {
+    setViewState({ type: 'climbing_session', climbingType, focus, session: null, loading: true })
     setError(null)
 
     try {
       const context = buildAIContext(lastSessions, null)
-      const session = await generateClimbingSession(type, context)
-      setViewState({ type: 'climbing_session', climbingType: type, session, loading: false })
+      const session = await generateClimbingSession(climbingType, context, focus)
+      setViewState({ type: 'climbing_session', climbingType, focus, session, loading: false })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate session')
-      setViewState({ type: 'climbing_session', climbingType: type, session: null, loading: false })
+      setViewState({ type: 'climbing_session', climbingType, focus, session: null, loading: false })
     }
   }
 
@@ -415,9 +426,57 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     )
   }
 
+  // Focus picker (after selecting climbing type)
+  if (viewState.type === 'climbing_focus') {
+    const { climbingType } = viewState
+    const focusOptions = climbingType === 'boulder' ? BOULDER_FOCUS_OPTIONS : LEAD_FOCUS_OPTIONS
+    const accentColor = climbingType === 'boulder' ? 'rose' : 'violet'
+
+    return (
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-lg tracking-wide">
+            {climbingType === 'boulder' ? 'BOULDER' : 'LEAD'} FOCUS
+          </h2>
+          <button onClick={handleReset} className="text-zinc-500 hover:text-zinc-300">
+            <X size={18} />
+          </button>
+        </div>
+
+        <p className="text-zinc-400 text-sm mb-4">What do you want to work on?</p>
+
+        <div className="grid grid-cols-2 gap-2">
+          {focusOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => handleFocusSelect(option.value, climbingType)}
+              className={`p-3 rounded-xl text-left transition-all border ${
+                option.value === 'surprise'
+                  ? `bg-gradient-to-br from-${accentColor}-600/30 to-${accentColor}-700/30 border-${accentColor}-500/50 hover:from-${accentColor}-600/40 hover:to-${accentColor}-700/40`
+                  : 'bg-void-100 hover:bg-void-50 border-violet-900/20'
+              }`}
+            >
+              <div className={`font-semibold text-sm ${option.value === 'surprise' ? `text-${accentColor}-300` : ''}`}>
+                {option.label}
+              </div>
+              <div className="text-[10px] text-zinc-500 mt-0.5">{option.description}</div>
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setViewState({ type: 'climbing_picker' })}
+          className="w-full mt-3 text-sm text-zinc-500 hover:text-zinc-300"
+        >
+          ← Back to climbing type
+        </button>
+      </div>
+    )
+  }
+
   // Climbing session view
   if (viewState.type === 'climbing_session') {
-    const { climbingType, session, loading } = viewState
+    const { climbingType, focus, session, loading } = viewState
 
     return (
       <div className="card">
@@ -455,10 +514,30 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
                   <Mountain size={24} strokeWidth={1.5} />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold mb-1">{session.title}</div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold">{session.title}</span>
+                    {session.intensityLevel && (
+                      <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                        session.intensityLevel === 'max' ? 'bg-red-500/30' :
+                        session.intensityLevel === 'hard' ? 'bg-orange-500/30' :
+                        session.intensityLevel === 'moderate' ? 'bg-yellow-500/30' :
+                        'bg-green-500/30'
+                      }`}>
+                        {session.intensityLevel}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm opacity-90 mb-2">{session.description}</p>
-                  <div className="text-xs opacity-70">
-                    {session.durationMinutes} min • {session.focus}
+                  <div className="text-xs opacity-70 flex flex-wrap gap-x-2">
+                    <span>{session.durationMinutes} min</span>
+                    <span>•</span>
+                    <span>{session.focus}</span>
+                    {session.gradeRange && (
+                      <>
+                        <span>•</span>
+                        <span>{session.gradeRange}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -504,13 +583,21 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
               <span className="font-semibold tracking-wide">Start Session</span>
             </button>
 
-            <button
-              onClick={() => handleClimbingTypeSelect(climbingType)}
-              className="w-full btn-secondary flex items-center justify-center gap-2"
-            >
-              <RefreshCw size={16} />
-              <span>Generate Another</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => focus && handleFocusSelect(focus, climbingType)}
+                className="flex-1 btn-secondary flex items-center justify-center gap-2"
+              >
+                <RefreshCw size={16} />
+                <span>Regenerate</span>
+              </button>
+              <button
+                onClick={() => setViewState({ type: 'climbing_focus', climbingType })}
+                className="flex-1 btn-secondary flex items-center justify-center gap-2"
+              >
+                <span>Change Focus</span>
+              </button>
+            </div>
           </div>
         )}
       </div>

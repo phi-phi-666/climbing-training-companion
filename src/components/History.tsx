@@ -121,7 +121,7 @@ export default function History() {
               </h2>
               <div className="space-y-2">
                 {daySessions.map((session) => {
-                  const Icon = sessionIcons[session.type]
+                  const Icon = sessionIcons[session.type] || Dumbbell
                   const isExpanded = expandedId === session.id
                   const isEditingDate = editingDateId === session.id
 
