@@ -5,9 +5,8 @@ import Modal from './ui/Modal'
 import Accordion from './ui/Accordion'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
-import TodayOptions from './TodayOptions'
+import SmartSchedule from './SmartSchedule'
 import type { Session } from '../services/db'
-import type { DaysSinceByType } from '../services/ai'
 import {
   Mountain,
   Dumbbell,
@@ -42,27 +41,6 @@ export default function Dashboard() {
   const [warmupSessionType, setWarmupSessionType] = useState<Session['type']>('boulder')
   const [showCooldown, setShowCooldown] = useState(false)
   const [cooldownSessionType, setCooldownSessionType] = useState<Session['type']>('boulder')
-
-  // Get days since for each session type
-  const daysSinceBoulder = useDaysSinceLastSession('boulder')
-  const daysSinceLead = useDaysSinceLastSession('lead')
-  const daysSinceHangboard = useDaysSinceLastSession('hangboard')
-  const daysSinceGym = useDaysSinceLastSession('gym')
-  const daysSinceCardio = useDaysSinceLastSession('cardio')
-  const daysSinceHiit = useDaysSinceLastSession('hiit')
-  const daysSinceCrossfit = useDaysSinceLastSession('crossfit')
-  const daysSinceMobility = useDaysSinceLastSession('mobility')
-
-  const daysSince: DaysSinceByType = {
-    boulder: daysSinceBoulder,
-    lead: daysSinceLead,
-    hangboard: daysSinceHangboard,
-    gym: daysSinceGym,
-    cardio: daysSinceCardio,
-    hiit: daysSinceHiit,
-    crossfit: daysSinceCrossfit,
-    mobility: daysSinceMobility
-  }
 
   const handleQuickWarmup = (type: Session['type']) => {
     setWarmupSessionType(type)
@@ -102,8 +80,8 @@ export default function Dashboard() {
         </p>
       </header>
 
-      {/* Today's Options - Always visible, no accordion */}
-      <TodayOptions daysSince={daysSince} hasSessionToday={hasSessionToday} />
+      {/* Smart Schedule - Main feature */}
+      <SmartSchedule hasSessionToday={hasSessionToday} />
 
       {/* Days Since - Accordion */}
       <Accordion

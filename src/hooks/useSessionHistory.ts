@@ -103,4 +103,30 @@ export function useHasSessionToday(): boolean {
   return (sessions?.length ?? 0) > 0
 }
 
+// Get the most recent climbing session (boulder or lead) for 24h hangboard rule
+export function useLastClimbingSession(): Session | null {
+  const session = useLiveQuery(
+    () =>
+      db.sessions
+        .toArray()
+        .then((sessions) => {
+          // Filter to climbing sessions only
+          const climbingSessions = sessions.filter(
+            s => s.type === 'boulder' || s.type === 'lead'
+          )
+          if (climbingSessions.length === 0) return null
+          // Sort by date descending, then by createdAt descending
+          climbingSessions.sort((a, b) => {
+            const dateCompare = b.date.localeCompare(a.date)
+            if (dateCompare !== 0) return dateCompare
+            return b.createdAt - a.createdAt
+          })
+          return climbingSessions[0]
+        }),
+    []
+  )
+
+  return session ?? null
+}
+
 export type { Session, Exercise }

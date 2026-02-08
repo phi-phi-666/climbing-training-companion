@@ -614,3 +614,187 @@ export function buildAIContext(
     ]
   }
 }
+
+// ============================================
+// NEW: Climbing Session Generation
+// ============================================
+
+export interface ClimbingSessionPhase {
+  name: string
+  duration?: string
+  details?: string
+}
+
+export interface ClimbingSession {
+  type: 'boulder' | 'lead'
+  subType?: 'problems' | 'circuits' | 'campus' | 'intervals'
+  title: string
+  description: string
+  focus: string
+  durationMinutes: number
+  structure: ClimbingSessionPhase[]
+  exercises?: SuggestedExercise[]
+  tips?: string
+}
+
+function buildClimbingSessionPrompt(type: 'boulder' | 'lead', context: AIContext): string {
+  const boulderThemes = [
+    'Power Endurance (4x4s)',
+    'Limit Bouldering (project level)',
+    'Volume Session (flash level, high quantity)',
+    'Interval Training (ON/OFF cycles)',
+    'Technique Focus (footwork, body positioning)',
+    'Slab Practice (balance, friction)',
+    'Overhang Power (steep terrain)',
+    'Competition Simulation (onsight attempts)',
+    'Weakness Targeting (slopers/crimps/pinches)',
+    'Campus Ladder Work'
+  ]
+
+  const leadThemes = [
+    'Endurance Laps (sub-max routes)',
+    'Redpoint Burns (project attempts)',
+    'Onsight Practice (new routes)',
+    'Route Reading Focus (visualization)',
+    'Rest Position Practice (shaking out)',
+    'Link Training (sections of project)',
+    'Volume Day (many easy-moderate routes)',
+    'Mental Training (mock lead falls)',
+    'Clipping Practice (efficiency)',
+    'Pacing Work (consistent movement)'
+  ]
+
+  const themes = type === 'boulder' ? boulderThemes : leadThemes
+  const randomThemes = themes.sort(() => Math.random() - 0.5).slice(0, 3)
+
+  return `Generate a detailed ${type === 'boulder' ? 'BOULDERING' : 'LEAD CLIMBING'} session plan.
+
+Today is ${context.currentDay}.
+
+Recent activity (last 7 days):
+${formatRecentSessions(context.lastSessions)}
+
+Consider these possible themes (pick one or combine): ${randomThemes.join(', ')}
+
+Requirements:
+- Create a structured session with clear phases (warmup already done separately)
+- Include specific details: grades, rest times, number of attempts
+- Total duration: 60-120 minutes
+- Be creative and specific - not generic advice
+- Consider the recent training history for appropriate intensity
+- ${type === 'boulder' ? 'For bouldering: specify problem types, styles, and intensity' : 'For lead: specify route grades, number of routes, and rest periods'}
+
+Return as JSON:
+{
+  "type": "${type}",
+  ${type === 'boulder' ? '"subType": "problems" | "circuits" | "campus" | "intervals",' : ''}
+  "title": "Catchy 2-4 word title",
+  "description": "One sentence overview",
+  "focus": "Main training goal",
+  "durationMinutes": 90,
+  "structure": [
+    {
+      "name": "Phase name",
+      "duration": "20 min",
+      "details": "Specific instructions: grades, rest, technique cues"
+    }
+  ],
+  "tips": "One practical tip for this session"
+}
+
+IMPORTANT: Return valid JSON only. No markdown, no code blocks.`
+}
+
+export async function generateClimbingSession(
+  type: 'boulder' | 'lead',
+  context: AIContext
+): Promise<ClimbingSession> {
+  const prompt = buildClimbingSessionPrompt(type, context)
+  const response = await callOpenRouter(prompt, { json: true })
+  const cleanedResponse = stripMarkdownCodeBlock(response)
+
+  try {
+    const parsed = JSON.parse(cleanedResponse)
+    return parsed as ClimbingSession
+  } catch (parseError) {
+    console.error('Failed to parse climbing session:', parseError, 'Response:', response)
+    throw new Error('Failed to generate climbing session')
+  }
+}
+
+// ============================================
+// NEW: Non-Climbing Day Options
+// ============================================
+
+function buildNonClimbingOptionsPrompt(
+  location: 'home' | 'gym' | 'outdoor',
+  allowedTypes: string[],
+  context: AIContext
+): string {
+  const locationEquipment: Record<string, string> = {
+    home: 'mat, dumbbells, resistance bands, hangboard, ab wheel',
+    gym: 'full gym equipment (machines, free weights, cables, cardio equipment)',
+    outdoor: 'bodyweight only, outdoor space'
+  }
+
+  return `Generate 3 workout options for today.
+
+Location: ${location.toUpperCase()}
+Available equipment: ${locationEquipment[location]}
+Allowed session types: ${allowedTypes.join(', ')}
+
+Today is ${context.currentDay}.
+
+Recent activity (last 7 days):
+${formatRecentSessions(context.lastSessions)}
+
+CRITICAL RULES:
+- sessionType MUST be one of: ${allowedTypes.join(', ')}
+- DO NOT suggest boulder, lead, or any climbing activity
+- Exercises must work with the available equipment
+- Consider recovery needs based on recent sessions
+
+Generate 3 options with varying intensity:
+1. HIGH effort - challenging workout
+2. MEDIUM effort - solid training
+3. LOW effort - recovery/light activity
+
+Return as JSON:
+{
+  "options": [
+    {
+      "effort": "high",
+      "title": "2-4 word title",
+      "description": "Why this fits today",
+      "sessionType": "one of allowed types",
+      "exercises": [
+        {"name": "Exercise", "sets": 3, "reps": "10-12"}
+      ],
+      "durationMinutes": 45
+    }
+  ]
+}
+
+IMPORTANT: Return valid JSON only. No markdown.`
+}
+
+export async function generateNonClimbingOptions(
+  location: 'home' | 'gym' | 'outdoor',
+  allowedTypes: string[],
+  context: AIContext
+): Promise<TodayOption[]> {
+  const prompt = buildNonClimbingOptionsPrompt(location, allowedTypes, context)
+  const response = await callOpenRouter(prompt, { json: true })
+  const cleanedResponse = stripMarkdownCodeBlock(response)
+
+  try {
+    const parsed = JSON.parse(cleanedResponse)
+    if (!parsed.options || !Array.isArray(parsed.options)) {
+      throw new Error('Invalid response structure')
+    }
+    return parsed.options as TodayOption[]
+  } catch (parseError) {
+    console.error('Failed to parse options:', parseError, 'Response:', response)
+    throw new Error('Failed to generate workout options')
+  }
+}
