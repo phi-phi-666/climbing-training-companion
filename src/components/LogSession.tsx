@@ -21,9 +21,9 @@ import Modal from './ui/Modal'
 import Accordion from './ui/Accordion'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
-import SupplementaryGenerator from './SupplementaryGenerator'
+import INeedMoreGenerator from './INeedMoreGenerator'
 import { useToast } from './ui/Toast'
-import type { TodayOption } from '../services/ai'
+import type { TodayOption, INeedMoreResult } from '../services/ai'
 import {
   Mountain,
   Dumbbell,
@@ -301,11 +301,42 @@ export default function LogSession() {
     setTimeout(() => setCooldownFlash(false), 600)
   }
 
-  // Flash animation when supplementary is generated
-  const handleSupplementaryGenerated = (newSupplementary: string) => {
-    setSupplementary(newSupplementary)
+  // Handler for "I Need More" workout generation
+  const handleINeedMoreGenerated = (result: INeedMoreResult, workoutDuration: number) => {
+    // Build notes from the result
+    const exerciseNotes = result.exercises
+      .map(ex => {
+        let line = ex.name
+        if (ex.sets && ex.reps) {
+          line += `: ${ex.sets}×${ex.reps}`
+        } else if (ex.sets) {
+          line += `: ${ex.sets} sets`
+        } else if (ex.reps) {
+          line += `: ${ex.reps}`
+        }
+        return line
+      })
+      .join('\n')
+
+    let fullNotes = `${result.title}\n${result.description}\n\n${exerciseNotes}`
+    if (result.notes) {
+      fullNotes += '\n\n' + result.notes
+    }
+
+    // Append to existing notes or set as new
+    if (notes.trim()) {
+      setNotes(notes + '\n\n---\nBonus Workout:\n' + fullNotes)
+    } else {
+      setNotes('Bonus Workout:\n' + fullNotes)
+    }
+
+    // Update supplementary state to show checkmark
+    setSupplementary(result.title)
     setSupplementaryFlash(true)
     setTimeout(() => setSupplementaryFlash(false), 600)
+
+    // Add the workout duration to the session
+    setDuration(prev => prev + workoutDuration)
   }
 
   const dateOptions = getDateOptions()
@@ -775,13 +806,12 @@ export default function LogSession() {
         onClose={() => setShowSupplementary(false)}
         title="I Need More!"
       >
-        <SupplementaryGenerator
+        <INeedMoreGenerator
           key={`supplementary-${sessionType}-${boulderSubType || 'none'}`}
           sessionType={sessionType}
           boulderSubType={sessionType === 'boulder' ? boulderSubType : undefined}
           onClose={() => setShowSupplementary(false)}
-          onSupplementaryGenerated={handleSupplementaryGenerated}
-          savedSupplementary={supplementary}
+          onWorkoutGenerated={handleINeedMoreGenerated}
         />
       </Modal>
     </div>

@@ -15,6 +15,8 @@ interface WarmupGeneratorProps {
   savedWarmup?: string | null
 }
 
+type WarmupDuration = 5 | 10 | 15
+
 export default function WarmupGenerator({
   sessionType,
   boulderSubType,
@@ -27,10 +29,11 @@ export default function WarmupGenerator({
   const [error, setError] = useState<string | null>(null)
   const [showTimer, setShowTimer] = useState(false)
   const [showMismatchWarning, setShowMismatchWarning] = useState(false)
+  const [selectedDuration, setSelectedDuration] = useState<WarmupDuration>(10)
 
   // Track which session type the current warmup was generated for
-  const generatedForRef = useRef<{ type: string; subType?: string } | null>(
-    savedWarmup ? { type: sessionType, subType: boulderSubType } : null
+  const generatedForRef = useRef<{ type: string; subType?: string; duration?: number } | null>(
+    savedWarmup ? { type: sessionType, subType: boulderSubType, duration: 10 } : null
   )
 
   const lastSessions = useSessionHistory(7)
@@ -63,17 +66,17 @@ export default function WarmupGenerator({
     (sessionType === 'boulder' && generatedForRef.current.subType !== boulderSubType)
   )
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (duration: WarmupDuration = selectedDuration) => {
     setLoading(true)
     setError(null)
     setShowMismatchWarning(false)
 
     try {
       const context = buildAIContext(lastSessions, null)
-      const result = await generateWarmup(sessionType, context, boulderSubType)
+      const result = await generateWarmup(sessionType, context, boulderSubType, undefined, duration)
       setWarmup(result)
       // Update what this warmup was generated for
-      generatedForRef.current = { type: sessionType, subType: boulderSubType }
+      generatedForRef.current = { type: sessionType, subType: boulderSubType, duration }
       onWarmupGenerated?.(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate warmup')
@@ -143,8 +146,29 @@ export default function WarmupGenerator({
             </span>{' '}
             session based on your recent training history.
           </p>
+
+          {/* Duration picker */}
+          <div className="mb-4">
+            <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Duration</div>
+            <div className="flex justify-center gap-2">
+              {([5, 10, 15] as WarmupDuration[]).map((dur) => (
+                <button
+                  key={dur}
+                  onClick={() => setSelectedDuration(dur)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    selectedDuration === dur
+                      ? 'bg-rose-500 text-white'
+                      : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                  }`}
+                >
+                  {dur} min
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
-            onClick={handleGenerate}
+            onClick={() => handleGenerate(selectedDuration)}
             className="btn-primary px-8"
             disabled={loading}
           >
@@ -164,7 +188,7 @@ export default function WarmupGenerator({
         <div className="bg-red-900/30 border border-red-700 rounded-xl p-4">
           <p className="text-red-400 text-sm">{error}</p>
           <button
-            onClick={handleGenerate}
+            onClick={() => handleGenerate(selectedDuration)}
             className="mt-3 text-sm text-red-300 underline"
           >
             Try again

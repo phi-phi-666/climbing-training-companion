@@ -24,35 +24,39 @@ interface WorkoutTimerProps {
   onComplete: () => void
 }
 
-// Parse duration strings like "2 min", "30 sec", "1-2 min", "45s", etc.
+// Parse duration strings like "2 min", "30 sec", "1-2 min", "1.5 min", "45s", etc.
 function parseDuration(text: string): number {
   // First, remove the exercise numbering and any leading content before the actual exercise
   // This handles cases like "1. High knees (30 sec)" - we don't want to pick up "1"
-  const cleanedText = text.replace(/^\d+[.)]\s*/, '').trim()
+  // More aggressive: remove "1.", "1)", "1 ", "1:" at the start
+  const cleanedText = text.replace(/^\s*\d+\s*[.):\-]\s*/, '').trim()
+
+  // Check for "each side" - this will double whatever time we compute
+  const eachSideMultiplier = cleanedText.match(/each\s*side|per\s*side|both\s*sides/i) ? 2 : 1
 
   // Check for explicit time durations first (more specific patterns)
-  // Look for patterns like "30 sec", "2 min", "1-2 min"
+  // Look for patterns like "30 sec", "2 min", "1-2 min", "1.5 min"
 
-  // Range of minutes (1-2 min) - take average
-  let match = cleanedText.match(/(\d+)\s*-\s*(\d+)\s*min/i)
+  // Decimal minutes like "1.5 min" or "0.5 min"
+  let match = cleanedText.match(/(\d+\.?\d*)\s*min(?:ute)?s?\b/i)
   if (match) {
-    return Math.round((parseInt(match[1]) + parseInt(match[2])) / 2) * 60
+    const mins = parseFloat(match[1])
+    // Sanity check: warmup exercises rarely exceed 5 minutes
+    if (mins <= 5) {
+      return Math.round(mins * 60) * eachSideMultiplier
+    }
   }
 
-  // Single minutes with explicit "min" suffix
-  match = cleanedText.match(/(\d+)\s*min(?:ute)?s?\b/i)
+  // Range of minutes (1-2 min) - take average
+  match = cleanedText.match(/(\d+)\s*-\s*(\d+)\s*min/i)
   if (match) {
-    const mins = parseInt(match[1])
-    // Sanity check: warmup exercises rarely exceed 3 minutes
-    if (mins <= 5) {
-      return mins * 60
-    }
+    return Math.round((parseInt(match[1]) + parseInt(match[2])) / 2) * 60 * eachSideMultiplier
   }
 
   // Seconds with explicit "sec" or "second" suffix
   match = cleanedText.match(/(\d+)\s*sec(?:ond)?s?\b/i)
   if (match) {
-    return parseInt(match[1])
+    return parseInt(match[1]) * eachSideMultiplier
   }
 
   // Shorthand like "30s" or "2m" (only at word boundaries, not part of other words)
@@ -60,7 +64,7 @@ function parseDuration(text: string): number {
   if (match && !cleanedText.match(new RegExp(`\\d+\\s*sets?`, 'i'))) {
     const secs = parseInt(match[1])
     if (secs <= 120) {
-      return secs
+      return secs * eachSideMultiplier
     }
   }
 
@@ -68,7 +72,7 @@ function parseDuration(text: string): number {
   if (match && !cleanedText.match(new RegExp(`\\d+\\s*m(?:eter|ile)`, 'i'))) {
     const mins = parseInt(match[1])
     if (mins <= 5) {
-      return mins * 60
+      return mins * 60 * eachSideMultiplier
     }
   }
 
@@ -77,17 +81,14 @@ function parseDuration(text: string): number {
   if (match) {
     const sets = parseInt(match[1])
     const reps = parseInt(match[2])
-    return sets * reps * 3
+    return sets * reps * 3 * eachSideMultiplier
   }
 
   match = cleanedText.match(/(\d+)\s*reps?\b/i)
   if (match) {
     const reps = parseInt(match[1])
-    return reps * 3
+    return reps * 3 * eachSideMultiplier
   }
-
-  // Check for "each side" - this will double whatever time we compute
-  const eachSideMultiplier = cleanedText.match(/each\s*side|per\s*side|both\s*sides/i) ? 2 : 1
 
   // Default: 45 seconds for unknown durations (reasonable for most warmup exercises)
   return 45 * eachSideMultiplier

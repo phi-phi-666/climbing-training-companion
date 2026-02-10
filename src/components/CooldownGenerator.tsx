@@ -17,6 +17,8 @@ interface CooldownGeneratorProps {
   exercises?: string[]
 }
 
+type CooldownDuration = 5 | 10 | 15
+
 export default function CooldownGenerator({
   sessionType,
   boulderSubType,
@@ -31,10 +33,11 @@ export default function CooldownGenerator({
   const [error, setError] = useState<string | null>(null)
   const [showTimer, setShowTimer] = useState(false)
   const [showMismatchWarning, setShowMismatchWarning] = useState(false)
+  const [selectedDuration, setSelectedDuration] = useState<CooldownDuration>(10)
 
   // Track which session type the current cooldown was generated for
-  const generatedForRef = useRef<{ type: string; subType?: string } | null>(
-    savedCooldown ? { type: sessionType, subType: boulderSubType } : null
+  const generatedForRef = useRef<{ type: string; subType?: string; duration?: number } | null>(
+    savedCooldown ? { type: sessionType, subType: boulderSubType, duration: 10 } : null
   )
 
   const lastSessions = useSessionHistory(7)
@@ -67,17 +70,17 @@ export default function CooldownGenerator({
     (sessionType === 'boulder' && generatedForRef.current.subType !== boulderSubType)
   )
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (duration: CooldownDuration = selectedDuration) => {
     setLoading(true)
     setError(null)
     setShowMismatchWarning(false)
 
     try {
       const context = buildAIContext(lastSessions, null)
-      const result = await generateCooldown(sessionType, context, muscleGroups, exercises, boulderSubType)
+      const result = await generateCooldown(sessionType, context, muscleGroups, exercises, boulderSubType, duration)
       setCooldown(result)
       // Update what this cooldown was generated for
-      generatedForRef.current = { type: sessionType, subType: boulderSubType }
+      generatedForRef.current = { type: sessionType, subType: boulderSubType, duration }
       onCooldownGenerated?.(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate cooldown')
@@ -154,8 +157,29 @@ export default function CooldownGenerator({
               Targeting: {muscleGroups.join(', ')}
             </p>
           )}
+
+          {/* Duration picker */}
+          <div className="mb-4">
+            <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Duration</div>
+            <div className="flex justify-center gap-2">
+              {([5, 10, 15] as CooldownDuration[]).map((dur) => (
+                <button
+                  key={dur}
+                  onClick={() => setSelectedDuration(dur)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    selectedDuration === dur
+                      ? 'bg-accent-500 text-white'
+                      : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                  }`}
+                >
+                  {dur} min
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
-            onClick={handleGenerate}
+            onClick={() => handleGenerate(selectedDuration)}
             className="btn-primary px-8"
             disabled={loading}
           >
@@ -175,7 +199,7 @@ export default function CooldownGenerator({
         <div className="bg-red-900/30 border border-red-700 rounded-xl p-4">
           <p className="text-red-400 text-sm">{error}</p>
           <button
-            onClick={handleGenerate}
+            onClick={() => handleGenerate(selectedDuration)}
             className="mt-3 text-sm text-red-300 underline"
           >
             Try again

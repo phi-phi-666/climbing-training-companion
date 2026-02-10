@@ -247,7 +247,8 @@ export const sessionTypes = [
   { value: 'cardio', label: 'Cardio', hasSubTypes: true },
   { value: 'hiit', label: 'HIIT', hasSubTypes: false },
   { value: 'crossfit', label: 'CrossFit', hasSubTypes: false },
-  { value: 'mobility', label: 'Mobility', hasSubTypes: false }
+  { value: 'mobility', label: 'Mobility', hasSubTypes: false },
+  { value: 'core', label: 'Core', hasSubTypes: false }
 ] as const
 
 export type SessionType = (typeof sessionTypes)[number]['value']

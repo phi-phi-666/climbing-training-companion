@@ -114,7 +114,8 @@ function buildWarmupPrompt(
   sessionType: string,
   context: AIContext,
   boulderSubType?: string,
-  muscleGroups?: string[]
+  muscleGroups?: string[],
+  durationMinutes: number = 10
 ): string {
   // Generate unique random seed for variety
   const randomSeed = Date.now() % 1000
@@ -221,17 +222,18 @@ Lower body/hip mobility: ${lowerSample.join(', ')}
 Climbing-specific: ${climbingSample.join(', ')}
 
 Requirements:
-- 12-18 minutes total (structure depends on session type)
+- TOTAL DURATION: ${durationMinutes} minutes (this is critical - do not exceed)
 - Progress from general to specific
 - For climbing sessions: MUST include substantial core and lower body work
 - For ${sessionType}: Follow the session guidance above
 - Select exercises from the pools above for variety
 - Mix it up! Don't use the same exercises every time
 - Consider what muscles need most prep for this specific session type
+- Each exercise duration should add up to approximately ${durationMinutes} minutes total
 
 IMPORTANT: Return plain text only. No markdown formatting, no headers, no bold text, no asterisks. Just numbered lines like:
 1. Exercise name (2 min)
-2. Another exercise (3 min)
+2. Another exercise (1.5 min)
 
 Be creative and specific. Don't be generic. Surprise me with the combination.
 Return only the warmup routine, no preamble or explanation.`
@@ -241,9 +243,10 @@ export async function generateWarmup(
   sessionType: Session['type'],
   context: AIContext,
   boulderSubType?: string,
-  muscleGroups?: string[]
+  muscleGroups?: string[],
+  durationMinutes: number = 10
 ): Promise<string> {
-  const prompt = buildWarmupPrompt(sessionType, context, boulderSubType, muscleGroups)
+  const prompt = buildWarmupPrompt(sessionType, context, boulderSubType, muscleGroups, durationMinutes)
   return callOpenRouter(prompt)
 }
 
@@ -252,7 +255,8 @@ function buildCooldownPrompt(
   context: AIContext,
   muscleGroups?: string[],
   exercises?: string[],
-  boulderSubType?: string
+  boulderSubType?: string,
+  durationMinutes: number = 10
 ): string {
   const muscleGroupsText = muscleGroups && muscleGroups.length > 0
     ? `\nMuscle groups worked this session: ${muscleGroups.join(', ')}`
@@ -292,13 +296,14 @@ ${formatRecentSessions(context.lastSessions)}
 Today is ${context.currentDay}.
 
 Requirements:
-- 10-15 minutes total
+- TOTAL DURATION: ${durationMinutes} minutes (this is critical - do not exceed)
 - Focus on recovery and flexibility
 - PRIORITIZE stretches for the specific muscle groups worked in this session
 - Include both static stretches and gentle mobility work
 - For climbing sessions, always include forearm and finger stretches
 - Format as a simple numbered list with duration per item
 - Keep descriptions concise (one line each)
+- Each stretch duration should add up to approximately ${durationMinutes} minutes total
 
 IMPORTANT: Return plain text only. No markdown formatting, no headers, no bold text, no asterisks, no special characters. Just simple numbered lines like:
 1. Stretch name (30 sec each side)
@@ -312,9 +317,10 @@ export async function generateCooldown(
   context: AIContext,
   muscleGroups?: string[],
   exercises?: string[],
-  boulderSubType?: string
+  boulderSubType?: string,
+  durationMinutes: number = 10
 ): Promise<string> {
-  const prompt = buildCooldownPrompt(sessionType, context, muscleGroups, exercises, boulderSubType)
+  const prompt = buildCooldownPrompt(sessionType, context, muscleGroups, exercises, boulderSubType, durationMinutes)
   return callOpenRouter(prompt)
 }
 
@@ -838,5 +844,182 @@ export async function generateNonClimbingOptions(
   } catch (parseError) {
     console.error('Failed to parse options:', parseError, 'Response:', response)
     throw new Error('Failed to generate workout options')
+  }
+}
+
+// ============================================
+// "I Need More" - Enhanced Supplementary Workout
+// ============================================
+
+export type WorkoutType = 'antagonist' | 'supplementary' | 'core'
+
+export interface INeedMoreExercise {
+  name: string
+  sets?: number
+  reps?: string
+}
+
+export interface INeedMoreResult {
+  title: string
+  description: string
+  muscleGroups: string[]
+  exercises: INeedMoreExercise[]
+  notes?: string
+}
+
+// Exercise pools for "I Need More"
+const iNeedMorePools = {
+  antagonist: {
+    // Pushing movements (climbing is pulling)
+    push: [
+      'Push-ups', 'Diamond push-ups', 'Pike push-ups', 'Dips',
+      'Bench press', 'Incline press', 'Overhead press', 'Arnold press',
+      'Chest flies', 'Cable crossover', 'Tricep dips', 'Close grip bench'
+    ],
+    shoulders: [
+      'Face pulls', 'External rotations', 'Cuban rotations', 'Band pull-aparts',
+      'Reverse flies', 'YTWs', 'Prone I-raises', 'Wall slides',
+      'Shoulder dislocates', 'Front raises', 'Lateral raises'
+    ],
+    wrists: [
+      'Reverse wrist curls', 'Wrist roller (extension)', 'Rice bucket extensions',
+      'Finger extensor band work', 'Reverse grip curls'
+    ]
+  },
+  supplementary: {
+    // More pulling volume
+    pull: [
+      'Pull-ups', 'Chin-ups', 'Wide grip pull-ups', 'L-sit pull-ups',
+      'Rows (barbell)', 'Rows (dumbbell)', 'Cable rows', 'Face pulls',
+      'Lat pulldowns', 'Straight arm pulldowns', 'Inverted rows'
+    ],
+    grip: [
+      'Dead hangs', 'Towel hangs', 'Fat grip hangs', 'Pinch blocks',
+      'Farmer carries', 'Plate pinches', 'Gripper work'
+    ],
+    fingers: [
+      'Half-crimp hangs', 'Open hand hangs', 'Pocket hangs (3 finger)',
+      'Repeaters', 'Max hangs (moderate weight)'
+    ]
+  },
+  core: {
+    anterior: [
+      'Hollow body holds', 'Dead bugs', 'Hanging leg raises', 'L-sits',
+      'Ab wheel rollouts', 'Plank', 'Mountain climbers', 'Bicycle crunches',
+      'V-ups', 'Toe touches', 'Flutter kicks', 'Dragon flags'
+    ],
+    obliques: [
+      'Side plank', 'Russian twists', 'Windshield wipers', 'Pallof press',
+      'Cable woodchops', 'Side crunches', 'Copenhagen plank'
+    ],
+    posterior: [
+      'Supermans', 'Bird dogs', 'Back extensions', 'Reverse hypers',
+      'Glute bridges', 'Hip thrusts', 'Good mornings'
+    ]
+  }
+}
+
+function buildINeedMorePrompt(
+  sessionType: string,
+  context: AIContext,
+  workoutTypes: WorkoutType[],
+  durationMinutes: number,
+  boulderSubType?: string
+): string {
+  const subTypeText = boulderSubType ? ` (${boulderSubType})` : ''
+  const isClimbingSession = ['boulder', 'lead', 'hangboard'].includes(sessionType)
+
+  // Build workout focus descriptions
+  const focusDescriptions: string[] = []
+  const exercisePools: string[] = []
+
+  if (workoutTypes.includes('antagonist')) {
+    focusDescriptions.push('ANTAGONIST work (pushing movements to balance climbing/pulling)')
+    exercisePools.push(
+      `Pushing exercises: ${getRandomFromArray(iNeedMorePools.antagonist.push, 5).join(', ')}`,
+      `Shoulder health: ${getRandomFromArray(iNeedMorePools.antagonist.shoulders, 4).join(', ')}`,
+      `Wrist extensors: ${getRandomFromArray(iNeedMorePools.antagonist.wrists, 3).join(', ')}`
+    )
+  }
+
+  if (workoutTypes.includes('supplementary')) {
+    focusDescriptions.push('SUPPLEMENTARY volume (more pulling/grip work)')
+    exercisePools.push(
+      `Pulling exercises: ${getRandomFromArray(iNeedMorePools.supplementary.pull, 5).join(', ')}`,
+      `Grip work: ${getRandomFromArray(iNeedMorePools.supplementary.grip, 4).join(', ')}`
+    )
+  }
+
+  if (workoutTypes.includes('core')) {
+    focusDescriptions.push('CORE training (stability and power transfer)')
+    exercisePools.push(
+      `Anterior core: ${getRandomFromArray(iNeedMorePools.core.anterior, 5).join(', ')}`,
+      `Obliques: ${getRandomFromArray(iNeedMorePools.core.obliques, 3).join(', ')}`,
+      `Posterior chain: ${getRandomFromArray(iNeedMorePools.core.posterior, 3).join(', ')}`
+    )
+  }
+
+  // Special warning for supplementary after climbing
+  const supplementaryWarning = workoutTypes.includes('supplementary') && isClimbingSession
+    ? '\nWARNING: User selected supplementary pulling after a climbing session. Include lighter intensity and focus on technique/endurance rather than max strength to reduce injury risk.'
+    : ''
+
+  return `Generate a focused supplementary workout after a ${sessionType}${subTypeText} session.
+
+The user wants: ${focusDescriptions.join(' + ')}
+Duration: ${durationMinutes} minutes
+${supplementaryWarning}
+
+Recent activity (last 7 days):
+${formatRecentSessions(context.lastSessions)}
+
+Today is ${context.currentDay}.
+
+EXERCISE POOLS TO SELECT FROM:
+${exercisePools.join('\n')}
+
+Requirements:
+- Create a ${durationMinutes}-minute workout
+- Select ${Math.floor(durationMinutes / 5)}-${Math.floor(durationMinutes / 3)} exercises (adjust for duration)
+- Include sets and reps for each exercise
+- For ${durationMinutes <= 15 ? 'short sessions: 2-4 exercises, keep rest minimal' : durationMinutes <= 30 ? 'medium sessions: 4-6 exercises, moderate rest' : 'longer sessions: 6-8 exercises, can include supersets'}
+- If multiple workout types selected, balance time between them
+- Title should be catchy and describe the focus (2-4 words)
+- Description should explain the benefit in one sentence
+- List which muscle groups are targeted
+
+Return as JSON:
+{
+  "title": "Catchy 2-4 word title",
+  "description": "One sentence explaining the focus and benefit",
+  "muscleGroups": ["chest", "shoulders", "triceps"],
+  "exercises": [
+    {"name": "Push-ups", "sets": 3, "reps": "12-15"},
+    {"name": "Face pulls", "sets": 3, "reps": "15-20"},
+    {"name": "Hollow body holds", "sets": 3, "reps": "30 sec"}
+  ],
+  "notes": "Optional coaching tip or reminder"
+}
+
+IMPORTANT: Return valid JSON only. No markdown, no code blocks.`
+}
+
+export async function generateINeedMore(
+  sessionType: Session['type'],
+  context: AIContext,
+  workoutTypes: WorkoutType[],
+  durationMinutes: number,
+  boulderSubType?: string
+): Promise<INeedMoreResult> {
+  const prompt = buildINeedMorePrompt(sessionType, context, workoutTypes, durationMinutes, boulderSubType)
+  const response = await callOpenRouter(prompt, { json: true })
+  const cleanedResponse = stripMarkdownCodeBlock(response)
+
+  try {
+    const parsed = JSON.parse(cleanedResponse)
+    return parsed as INeedMoreResult
+  } catch (parseError) {
+    console.error('Failed to parse I Need More result:', parseError, 'Response:', response)
+    throw new Error('Failed to generate workout')
   }
 }

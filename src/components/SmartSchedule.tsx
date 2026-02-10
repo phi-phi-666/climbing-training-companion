@@ -84,8 +84,7 @@ type ViewState =
   | { type: 'climbing_focus'; climbingType: ClimbingType }
   | { type: 'climbing_session'; climbingType: ClimbingType; focus?: BoulderFocus | LeadFocus; session: ClimbingSession | null; loading: boolean }
   | { type: 'location_picker' }
-  | { type: 'workout_options'; location: Location; options: TodayOption[] | null; loading: boolean }
-  | { type: 'selected_workout'; option: TodayOption }
+  | { type: 'workout_options'; location: Location; options: TodayOption[] | null; loading: boolean; selectedIndex?: number }
   | { type: 'override_menu' }
 
 export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
@@ -173,8 +172,13 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     }
   }
 
-  const handleSelectOption = (option: TodayOption) => {
-    setViewState({ type: 'selected_workout', option })
+  const handleSelectOption = (index: number) => {
+    if (viewState.type === 'workout_options' && viewState.options) {
+      setViewState({
+        ...viewState,
+        selectedIndex: viewState.selectedIndex === index ? undefined : index
+      })
+    }
   }
 
   const handleStartTraining = (option: TodayOption) => {
@@ -660,7 +664,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
 
   // Workout options (non-climbing day, location selected)
   if (viewState.type === 'workout_options') {
-    const { location, options, loading } = viewState
+    const { location, options, loading, selectedIndex } = viewState
     const Icon = locationIcons[location]
 
     return (
@@ -700,37 +704,75 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           <div className="space-y-2">
             {options.map((option, index) => {
               const SessionIcon = sessionIcons[option.sessionType] || Dumbbell
+              const isSelected = selectedIndex === index
 
               const effortColors: Record<string, string> = {
-                high: 'from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600',
-                medium: 'from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600',
-                low: 'from-accent-600 to-accent-700 hover:from-accent-500 hover:to-accent-600'
+                high: 'from-rose-600 to-rose-700',
+                medium: 'from-amber-600 to-amber-700',
+                low: 'from-accent-600 to-accent-700'
+              }
+
+              const effortHoverColors: Record<string, string> = {
+                high: 'hover:from-rose-500 hover:to-rose-600',
+                medium: 'hover:from-amber-500 hover:to-amber-600',
+                low: 'hover:from-accent-500 hover:to-accent-600'
               }
 
               return (
-                <button
-                  key={index}
-                  onClick={() => handleSelectOption(option)}
-                  className={`w-full p-4 rounded-xl bg-gradient-to-r ${effortColors[option.effort] || effortColors.medium} transition-all text-left shadow-lg hover:scale-[1.01] active:scale-[0.99]`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="bg-black/20 p-2 rounded-lg">
-                      <SessionIcon size={20} strokeWidth={1.5} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold">{option.title}</span>
-                        <span className="text-[10px] uppercase tracking-wider opacity-75 bg-black/20 px-2 py-0.5 rounded">
-                          {option.effort}
-                        </span>
+                <div key={index} className="space-y-2">
+                  <button
+                    onClick={() => handleSelectOption(index)}
+                    className={`w-full p-4 rounded-xl bg-gradient-to-r ${effortColors[option.effort] || effortColors.medium} ${!isSelected ? effortHoverColors[option.effort] || effortHoverColors.medium : ''} transition-all text-left shadow-lg ${!isSelected ? 'hover:scale-[1.01] active:scale-[0.99]' : 'ring-2 ring-white/30'}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="bg-black/20 p-2 rounded-lg">
+                        <SessionIcon size={20} strokeWidth={1.5} />
                       </div>
-                      <p className="text-sm opacity-90">{option.description}</p>
-                      <div className="text-xs opacity-70 mt-1">
-                        {option.durationMinutes} min
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold">{option.title}</span>
+                          <span className="text-[10px] uppercase tracking-wider opacity-75 bg-black/20 px-2 py-0.5 rounded">
+                            {option.effort}
+                          </span>
+                        </div>
+                        <p className="text-sm opacity-90">{option.description}</p>
+                        <div className="text-xs opacity-70 mt-1">
+                          {sessionTypes.find(t => t.value === option.sessionType)?.label} • {option.durationMinutes} min
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
+
+                    {/* Expanded content for selected option */}
+                    {isSelected && option.exercises && option.exercises.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-white/10">
+                        <div className="text-[10px] uppercase tracking-wider font-medium opacity-60 mb-2">
+                          Exercises
+                        </div>
+                        <div className="space-y-1">
+                          {option.exercises.map((ex, i) => (
+                            <div key={i} className="text-sm flex justify-between">
+                              <span className="opacity-90">{ex.name}</span>
+                              <span className="opacity-60 text-xs">
+                                {ex.sets && `${ex.sets}×`}{ex.reps || ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Start button for selected option */}
+                  {isSelected && (
+                    <button
+                      onClick={() => handleStartTraining(option)}
+                      className="w-full btn-primary flex items-center justify-center gap-2 py-3"
+                    >
+                      <Play size={18} strokeWidth={2} />
+                      <span className="font-semibold tracking-wide">Start Training</span>
+                    </button>
+                  )}
+                </div>
               )
             })}
 
@@ -750,75 +792,6 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
             </button>
           </div>
         )}
-      </div>
-    )
-  }
-
-  // Selected workout (ready to start)
-  if (viewState.type === 'selected_workout') {
-    const { option } = viewState
-    const SessionIcon = sessionIcons[option.sessionType] || Dumbbell
-
-    const effortColors: Record<string, string> = {
-      high: 'from-rose-600 to-rose-700',
-      medium: 'from-amber-600 to-amber-700',
-      low: 'from-accent-600 to-accent-700'
-    }
-
-    return (
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg tracking-wide">TODAY'S PLAN</h2>
-          <button onClick={handleReset} className="text-zinc-500 hover:text-zinc-300">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className={`p-4 rounded-xl bg-gradient-to-br ${effortColors[option.effort] || effortColors.medium} mb-4`}>
-          <div className="flex items-start gap-3">
-            <div className="bg-black/20 p-2 rounded-lg">
-              <SessionIcon size={24} strokeWidth={1.5} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold">{option.title}</span>
-                <span className="text-[10px] uppercase tracking-wider opacity-75 bg-black/20 px-2 py-0.5 rounded">
-                  {option.effort}
-                </span>
-              </div>
-              <p className="text-sm opacity-90 mb-2">{option.description}</p>
-              <div className="text-xs opacity-80">
-                {sessionTypes.find(t => t.value === option.sessionType)?.label} • {option.durationMinutes} min
-              </div>
-            </div>
-          </div>
-
-          {option.exercises && option.exercises.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-white/10">
-              <div className="text-[10px] uppercase tracking-wider font-medium opacity-60 mb-2">
-                Exercises
-              </div>
-              <div className="space-y-1">
-                {option.exercises.map((ex, i) => (
-                  <div key={i} className="text-sm flex justify-between">
-                    <span className="opacity-90">{ex.name}</span>
-                    <span className="opacity-60 text-xs">
-                      {ex.sets && `${ex.sets}×`}{ex.reps || ''}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={() => handleStartTraining(option)}
-          className="w-full btn-primary flex items-center justify-center gap-2 py-4"
-        >
-          <Play size={18} strokeWidth={2} />
-          <span className="font-semibold tracking-wide">Start Training</span>
-        </button>
       </div>
     )
   }

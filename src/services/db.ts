@@ -11,7 +11,7 @@ export interface Exercise {
 export interface Session {
   id?: number
   date: string
-  type: 'boulder' | 'lead' | 'hangboard' | 'gym' | 'cardio' | 'hiit' | 'crossfit' | 'mobility'
+  type: 'boulder' | 'lead' | 'hangboard' | 'gym' | 'cardio' | 'hiit' | 'crossfit' | 'mobility' | 'core'
   boulderSubType?: 'problems' | 'circuits' | 'campus' | 'intervals'
   cardioSubType?: 'bike' | 'elliptical' | 'run' | 'row'
   exercises: Exercise[]
