@@ -111,7 +111,8 @@ const sessionIcons: Record<string, LucideIcon> = {
   cardio: Footprints,
   hiit: Flame,
   crossfit: Zap,
-  mobility: StretchHorizontal
+  mobility: StretchHorizontal,
+  core: Dumbbell
 }
 
 // Icon mapping for cardio sub-types
