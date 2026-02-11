@@ -31,7 +31,8 @@ const sessionIcons: Record<string, LucideIcon> = {
   cardio: Footprints,
   hiit: Flame,
   crossfit: Zap,
-  mobility: StretchHorizontal
+  mobility: StretchHorizontal,
+  core: Dumbbell
 }
 
 export default function Dashboard() {
