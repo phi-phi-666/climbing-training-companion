@@ -3,6 +3,7 @@ import { generateINeedMore, buildAIContext, type INeedMoreResult, type WorkoutTy
 import { useSessionHistory } from '../hooks/useSessionHistory'
 import type { SessionType, BoulderSubType } from '../data/exercises'
 import { RefreshCw, Loader2, Play, AlertTriangle, Check } from 'lucide-react'
+import WorkoutPreview from './WorkoutPreview'
 
 type Duration = 15 | 30 | 45
 
@@ -10,7 +11,7 @@ interface INeedMoreGeneratorProps {
   sessionType: SessionType
   boulderSubType?: BoulderSubType
   onClose: () => void
-  onWorkoutGenerated?: (result: INeedMoreResult, duration: number) => void
+  onWorkoutGenerated?: (notesText: string) => void
 }
 
 const WORKOUT_OPTIONS: { value: WorkoutType; label: string; description: string }[] = [
@@ -38,6 +39,7 @@ export default function INeedMoreGenerator({
 
   const [duration, setDuration] = useState<Duration>(15)
   const [result, setResult] = useState<INeedMoreResult | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,10 +80,28 @@ export default function INeedMoreGenerator({
 
   const handleStartWorkout = () => {
     if (!result) return
+    setShowPreview(true)
+  }
 
-    // Call the callback with the result and close
-    onWorkoutGenerated?.(result, duration)
+  const handlePreviewComplete = (notesText: string) => {
+    if (!result) return
+    // Build full notes with title and description
+    const fullNotes = `${result.title}\n${result.description}\n\n${notesText}${result.notes ? '\n\n' + result.notes : ''}`
+    onWorkoutGenerated?.(fullNotes)
     onClose()
+  }
+
+  // Show workout preview if started
+  if (showPreview && result) {
+    return (
+      <WorkoutPreview
+        title={result.title}
+        description={result.description}
+        exercises={result.exercises}
+        onClose={() => setShowPreview(false)}
+        onComplete={handlePreviewComplete}
+      />
+    )
   }
 
   return (

@@ -23,7 +23,7 @@ import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
 import INeedMoreGenerator from './INeedMoreGenerator'
 import { useToast } from './ui/Toast'
-import type { TodayOption, INeedMoreResult } from '../services/ai'
+import type { TodayOption } from '../services/ai'
 import {
   Mountain,
   Dumbbell,
@@ -42,6 +42,7 @@ import {
   StickyNote,
   Loader2,
   Plus,
+  Maximize2,
   type LucideIcon
 } from 'lucide-react'
 
@@ -177,6 +178,7 @@ export default function LogSession() {
   const [showWarmup, setShowWarmup] = useState(false)
   const [showCooldown, setShowCooldown] = useState(false)
   const [showSupplementary, setShowSupplementary] = useState(false)
+  const [showNotesExpanded, setShowNotesExpanded] = useState(false)
   const [warmupFlash, setWarmupFlash] = useState(false)
   const [cooldownFlash, setCooldownFlash] = useState(false)
   const [supplementaryFlash, setSupplementaryFlash] = useState(false)
@@ -303,41 +305,18 @@ export default function LogSession() {
   }
 
   // Handler for "I Need More" workout generation
-  const handleINeedMoreGenerated = (result: INeedMoreResult, workoutDuration: number) => {
-    // Build notes from the result
-    const exerciseNotes = result.exercises
-      .map(ex => {
-        let line = ex.name
-        if (ex.sets && ex.reps) {
-          line += `: ${ex.sets}×${ex.reps}`
-        } else if (ex.sets) {
-          line += `: ${ex.sets} sets`
-        } else if (ex.reps) {
-          line += `: ${ex.reps}`
-        }
-        return line
-      })
-      .join('\n')
-
-    let fullNotes = `${result.title}\n${result.description}\n\n${exerciseNotes}`
-    if (result.notes) {
-      fullNotes += '\n\n' + result.notes
-    }
-
+  const handleINeedMoreGenerated = (notesText: string) => {
     // Append to existing notes or set as new
     if (notes.trim()) {
-      setNotes(notes + '\n\n---\nBonus Workout:\n' + fullNotes)
+      setNotes(notes + '\n\n---\nBonus Workout:\n' + notesText)
     } else {
-      setNotes('Bonus Workout:\n' + fullNotes)
+      setNotes('Bonus Workout:\n' + notesText)
     }
 
     // Update supplementary state to show checkmark
-    setSupplementary(result.title)
+    setSupplementary('Workout Added')
     setSupplementaryFlash(true)
     setTimeout(() => setSupplementaryFlash(false), 600)
-
-    // Add the workout duration to the session
-    setDuration(prev => prev + workoutDuration)
   }
 
   const dateOptions = getDateOptions()
@@ -746,12 +725,21 @@ export default function LogSession() {
         badge={notes.length > 0 ? '...' : undefined}
         defaultOpen={!!notes}
       >
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="How did it feel? Any PRs?"
-          className="input min-h-20 resize-none text-sm"
-        />
+        <div className="relative">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="How did it feel? Any PRs?"
+            className="input min-h-20 resize-none text-sm pr-10"
+          />
+          <button
+            onClick={() => setShowNotesExpanded(true)}
+            className="absolute right-2 top-2 p-1.5 rounded-lg bg-void-50 hover:bg-void-100 text-zinc-500 hover:text-zinc-300 transition-colors"
+            title="Expand notes"
+          >
+            <Maximize2 size={16} />
+          </button>
+        </div>
       </Accordion>
 
       {/* Save button with spinner */}
@@ -814,6 +802,29 @@ export default function LogSession() {
           onClose={() => setShowSupplementary(false)}
           onWorkoutGenerated={handleINeedMoreGenerated}
         />
+      </Modal>
+
+      {/* Expanded Notes Modal */}
+      <Modal
+        isOpen={showNotesExpanded}
+        onClose={() => setShowNotesExpanded(false)}
+        title="Notes"
+      >
+        <div className="flex flex-col h-[70vh]">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="How did it feel? Any PRs? Write as much as you want..."
+            className="input flex-1 resize-none text-sm leading-relaxed"
+            autoFocus
+          />
+          <button
+            onClick={() => setShowNotesExpanded(false)}
+            className="btn-primary mt-4 py-3"
+          >
+            Done
+          </button>
+        </div>
       </Modal>
     </div>
   )

@@ -24,6 +24,8 @@ import {
 } from '../services/ai'
 import { useSessionHistory, useLastClimbingSession } from '../hooks/useSessionHistory'
 import { sessionTypes } from '../data/exercises'
+import WorkoutPreview from './WorkoutPreview'
+import Modal from './ui/Modal'
 import {
   Mountain,
   Dumbbell,
@@ -121,6 +123,9 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
   })
 
   const [error, setError] = useState<string | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewOption, setPreviewOption] = useState<TodayOption | null>(null)
+  const [previewClimbingSession, setPreviewClimbingSession] = useState<ClimbingSession | null>(null)
 
   // Persist state
   useEffect(() => {
@@ -182,14 +187,34 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
   }
 
   const handleStartTraining = (option: TodayOption) => {
-    navigate('/log', {
-      state: {
-        prefill: option
-      }
-    })
+    // Show preview if exercises exist
+    if (option.exercises && option.exercises.length > 0) {
+      setPreviewOption(option)
+      setPreviewClimbingSession(null)
+      setShowPreview(true)
+    } else {
+      // No exercises to preview, go directly to log
+      navigate('/log', {
+        state: {
+          prefill: option
+        }
+      })
+    }
   }
 
   const handleStartClimbing = (session: ClimbingSession) => {
+    // Show preview if structure/exercises exist
+    if (session.structure && session.structure.length > 0) {
+      setPreviewClimbingSession(session)
+      setPreviewOption(null)
+      setShowPreview(true)
+    } else {
+      // No structure to preview, go directly to log
+      navigateToLogWithClimbing(session, '')
+    }
+  }
+
+  const navigateToLogWithClimbing = (session: ClimbingSession, notesText: string) => {
     navigate('/log', {
       state: {
         prefill: {
@@ -198,10 +223,27 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           title: session.title,
           description: session.description,
           durationMinutes: session.durationMinutes,
-          exercises: session.exercises || []
+          exercises: session.exercises || [],
+          notes: notesText || undefined
         }
       }
     })
+  }
+
+  const handlePreviewComplete = (notesText: string) => {
+    if (previewOption) {
+      navigate('/log', {
+        state: {
+          prefill: {
+            ...previewOption,
+            notes: notesText
+          }
+        }
+      })
+    } else if (previewClimbingSession) {
+      navigateToLogWithClimbing(previewClimbingSession, notesText)
+    }
+    setShowPreview(false)
   }
 
   const handleSkipClimbing = () => {
@@ -224,23 +266,63 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     setError(null)
   }
 
+  // Preview modal component
+  const previewModal = (
+    <Modal
+      isOpen={showPreview}
+      onClose={() => setShowPreview(false)}
+      title="Workout Preview"
+    >
+      {previewOption && previewOption.exercises && (
+        <WorkoutPreview
+          title={previewOption.title}
+          description={previewOption.description}
+          exercises={previewOption.exercises.map(ex => ({
+            name: ex.name,
+            sets: ex.sets,
+            reps: ex.reps
+          }))}
+          onClose={() => setShowPreview(false)}
+          onComplete={handlePreviewComplete}
+        />
+      )}
+      {previewClimbingSession && previewClimbingSession.structure && (
+        <WorkoutPreview
+          title={previewClimbingSession.title}
+          description={previewClimbingSession.description}
+          exercises={previewClimbingSession.structure.map(phase => ({
+            name: phase.name,
+            reps: phase.duration
+          }))}
+          onClose={() => setShowPreview(false)}
+          onComplete={handlePreviewComplete}
+        />
+      )}
+    </Modal>
+  )
+
   // Already trained today
   if (hasSessionToday && viewState.type === 'initial') {
     return (
-      <div className="card">
-        <div className="bg-accent-900/20 border border-accent-700/30 rounded-xl p-5 text-center">
-          <span className="text-3xl mb-2 block">✓</span>
-          <p className="text-accent-400 font-semibold">Already trained today</p>
-          <p className="text-zinc-500 text-sm mt-1">Rest up for tomorrow</p>
+      <>
+        {previewModal}
+        <div className="card">
+          <div className="bg-accent-900/20 border border-accent-700/30 rounded-xl p-5 text-center">
+            <span className="text-3xl mb-2 block">✓</span>
+            <p className="text-accent-400 font-semibold">Already trained today</p>
+            <p className="text-zinc-500 text-sm mt-1">Rest up for tomorrow</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   // Initial state - show main button
   if (viewState.type === 'initial') {
     return (
-      <div className="card space-y-3">
+      <>
+        {previewModal}
+        <div className="card space-y-3">
         <button
           onClick={() => {
             if (isClimbing) {
@@ -281,15 +363,18 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           </button>
         </div>
       </div>
+      </>
     )
   }
 
   // Override menu
   if (viewState.type === 'override_menu') {
     return (
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg tracking-wide">CHANGE TODAY</h2>
+      <>
+        {previewModal}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg tracking-wide">CHANGE TODAY</h2>
           <button onClick={handleReset} className="text-zinc-500 hover:text-zinc-300">
             <X size={18} />
           </button>
@@ -372,15 +457,18 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           )}
         </div>
       </div>
+      </>
     )
   }
 
   // Climbing type picker
   if (viewState.type === 'climbing_picker') {
     return (
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg tracking-wide">WHAT NOW?</h2>
+      <>
+        {previewModal}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg tracking-wide">WHAT NOW?</h2>
           <button onClick={handleReset} className="text-zinc-500 hover:text-zinc-300">
             <X size={18} />
           </button>
@@ -426,7 +514,8 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
         >
           Not climbing today? Do something else →
         </button>
-      </div>
+        </div>
+      </>
     )
   }
 
@@ -437,11 +526,13 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     const accentColor = climbingType === 'boulder' ? 'rose' : 'violet'
 
     return (
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg tracking-wide">
-            {climbingType === 'boulder' ? 'BOULDER' : 'LEAD'} FOCUS
-          </h2>
+      <>
+        {previewModal}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg tracking-wide">
+              {climbingType === 'boulder' ? 'BOULDER' : 'LEAD'} FOCUS
+            </h2>
           <button onClick={handleReset} className="text-zinc-500 hover:text-zinc-300">
             <X size={18} />
           </button>
@@ -474,7 +565,8 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
         >
           ← Back to climbing type
         </button>
-      </div>
+        </div>
+      </>
     )
   }
 
@@ -483,11 +575,13 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     const { climbingType, focus, session, loading } = viewState
 
     return (
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg tracking-wide">
-            {climbingType === 'boulder' ? 'BOULDERING' : 'LEAD'} SESSION
-          </h2>
+      <>
+        {previewModal}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg tracking-wide">
+              {climbingType === 'boulder' ? 'BOULDERING' : 'LEAD'} SESSION
+            </h2>
           <button onClick={handleReset} className="text-zinc-500 hover:text-zinc-300">
             <X size={18} />
           </button>
@@ -604,16 +698,19 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </>
     )
   }
 
   // Location picker (non-climbing day)
   if (viewState.type === 'location_picker') {
     return (
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg tracking-wide">WHERE?</h2>
+      <>
+        {previewModal}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg tracking-wide">WHERE?</h2>
           <button onClick={handleReset} className="text-zinc-500 hover:text-zinc-300">
             <X size={18} />
           </button>
@@ -658,7 +755,8 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
             ⚠️ Hangboard blocked (climbed within 24h)
           </div>
         )}
-      </div>
+        </div>
+      </>
     )
   }
 
@@ -668,13 +766,15 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     const Icon = locationIcons[location]
 
     return (
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Icon size={18} className="text-rose-400" />
-            <h2 className="font-display text-lg tracking-wide">
-              {locationLabels[location].toUpperCase()} OPTIONS
-            </h2>
+      <>
+        {previewModal}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Icon size={18} className="text-rose-400" />
+              <h2 className="font-display text-lg tracking-wide">
+                {locationLabels[location].toUpperCase()} OPTIONS
+              </h2>
           </div>
           <button onClick={handleReset} className="text-zinc-500 hover:text-zinc-300">
             <X size={18} />
@@ -792,7 +892,8 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
             </button>
           </div>
         )}
-      </div>
+        </div>
+      </>
     )
   }
 

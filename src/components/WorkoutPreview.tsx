@@ -1,0 +1,204 @@
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Check, RotateCcw } from 'lucide-react'
+
+interface Exercise {
+  name: string
+  sets?: number
+  reps?: string
+}
+
+interface WorkoutPreviewProps {
+  title: string
+  description?: string
+  exercises: Exercise[]
+  onClose: () => void
+  onComplete: (notesText: string) => void
+}
+
+export default function WorkoutPreview({
+  title,
+  description,
+  exercises,
+  onClose,
+  onComplete
+}: WorkoutPreviewProps) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set())
+
+  const currentExercise = exercises[currentIndex]
+  const nextExercise = exercises[currentIndex + 1]
+  const prevExercise = exercises[currentIndex - 1]
+  const totalExercises = exercises.length
+  const progress = ((currentIndex + 1) / totalExercises) * 100
+
+  const handleNext = () => {
+    // Mark current as completed
+    setCompletedExercises(prev => new Set(prev).add(currentIndex))
+
+    if (currentIndex < exercises.length - 1) {
+      setCurrentIndex(prev => prev + 1)
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1)
+    }
+  }
+
+  const handleDone = () => {
+    // Build notes text from exercises
+    const notesText = exercises
+      .map(ex => {
+        let line = ex.name
+        if (ex.sets && ex.reps) {
+          line += `: ${ex.sets}x${ex.reps}`
+        } else if (ex.sets) {
+          line += `: ${ex.sets} sets`
+        } else if (ex.reps) {
+          line += `: ${ex.reps}`
+        }
+        return line
+      })
+      .join('\n')
+
+    onComplete(notesText)
+  }
+
+  const handleRestart = () => {
+    setCurrentIndex(0)
+    setCompletedExercises(new Set())
+  }
+
+  const isLastExercise = currentIndex === exercises.length - 1
+
+  if (exercises.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-zinc-400 mb-4">No exercises to display</p>
+        <button onClick={onClose} className="btn-secondary">
+          Close
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="text-center">
+        <h3 className="font-semibold text-lg">{title}</h3>
+        {description && (
+          <p className="text-sm text-zinc-400 mt-1">{description}</p>
+        )}
+        <div className="text-xs text-zinc-500 mt-2">
+          Exercise {currentIndex + 1} of {totalExercises}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1.5 bg-void-100 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {/* Current exercise display */}
+      <div className="p-6 rounded-2xl text-center bg-gradient-to-br from-rose-600 to-rose-700">
+        <div className="text-sm uppercase tracking-wider opacity-70 mb-1">Current</div>
+        <div className="text-xl font-semibold mb-3 px-2 min-h-[3.5rem] flex items-center justify-center">
+          {currentExercise?.name}
+        </div>
+        {(currentExercise?.sets || currentExercise?.reps) && (
+          <div className="text-lg font-mono opacity-90">
+            {currentExercise.sets && `${currentExercise.sets}×`}
+            {currentExercise.reps || ''}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation controls */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={handlePrevious}
+          disabled={currentIndex === 0}
+          className="p-3 rounded-xl bg-void-100 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        >
+          <ChevronLeft size={24} />
+        </button>
+
+        <button
+          onClick={isLastExercise ? handleDone : handleNext}
+          className={`px-6 py-3 rounded-xl font-semibold shadow-lg transition-all flex items-center gap-2 ${
+            isLastExercise
+              ? 'bg-accent-500 text-white shadow-accent-500/30 hover:bg-accent-400'
+              : 'bg-rose-500 text-white shadow-rose-500/30 hover:bg-rose-400'
+          }`}
+        >
+          {isLastExercise ? (
+            <>
+              <Check size={20} />
+              <span>Done</span>
+            </>
+          ) : (
+            <>
+              <span>Next</span>
+              <ChevronRight size={20} />
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Next/Previous exercise preview */}
+      <div className="grid grid-cols-2 gap-2">
+        {prevExercise && (
+          <div className="bg-void-100 rounded-xl p-3 border border-violet-900/20">
+            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-0.5">Previous</div>
+            <div className="text-sm text-zinc-400 line-clamp-1">{prevExercise.name}</div>
+          </div>
+        )}
+        {nextExercise && (
+          <div className={`bg-void-100 rounded-xl p-3 border border-violet-900/20 ${!prevExercise ? 'col-span-2' : ''}`}>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-0.5">Next</div>
+            <div className="text-sm text-zinc-300 line-clamp-1">{nextExercise.name}</div>
+          </div>
+        )}
+      </div>
+
+      {/* Exercise list indicator */}
+      <div className="flex justify-center gap-1.5 flex-wrap">
+        {exercises.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentIndex(i)}
+            className={`w-2 h-2 rounded-full transition-all ${
+              i === currentIndex
+                ? 'bg-rose-500 w-4'
+                : completedExercises.has(i)
+                ? 'bg-accent-500'
+                : 'bg-zinc-700'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Footer actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={handleRestart}
+          className="flex-1 btn-secondary flex items-center justify-center gap-2 py-2.5"
+        >
+          <RotateCcw size={16} />
+          <span className="text-sm">Restart</span>
+        </button>
+        <button
+          onClick={onClose}
+          className="flex-1 btn-secondary py-2.5 text-sm"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  )
+}
