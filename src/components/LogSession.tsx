@@ -24,6 +24,13 @@ import CooldownGenerator from './CooldownGenerator'
 import INeedMoreGenerator from './INeedMoreGenerator'
 import { useToast } from './ui/Toast'
 import type { TodayOption } from '../services/ai'
+
+// Extended prefill type with warmup/cooldown from SmartSchedule
+interface PrefillData extends TodayOption {
+  warmup?: string
+  cooldown?: string
+  notes?: string  // Notes from WorkoutPreview
+}
 import {
   Mountain,
   Dumbbell,
@@ -155,7 +162,7 @@ export default function LogSession() {
   const navigate = useNavigate()
   const location = useLocation()
   const { showToast } = useToast()
-  const prefill = (location.state as { prefill?: TodayOption })?.prefill
+  const prefill = (location.state as { prefill?: PrefillData })?.prefill
 
   // Load saved state from localStorage
   const savedState = loadFormState()
@@ -219,11 +226,20 @@ export default function LogSession() {
         })
         .join('\n')
 
-      let fullNotes = exerciseNotes
-      if (prefill.recoveryNotes) {
+      // Add prefill notes if provided (from WorkoutPreview)
+      let fullNotes = prefill.notes || exerciseNotes
+      if (!prefill.notes && prefill.recoveryNotes) {
         fullNotes += '\n\n' + prefill.recoveryNotes
       }
       setNotes(fullNotes)
+
+      // Set warmup/cooldown from prefill (from SmartSchedule)
+      if (prefill.warmup) {
+        setWarmup(prefill.warmup)
+      }
+      if (prefill.cooldown) {
+        setCooldown(prefill.cooldown)
+      }
 
       // Try to match exercise names to available exercises
       const exerciseNames = prefill.exercises.map(e => e.name)

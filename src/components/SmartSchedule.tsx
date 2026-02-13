@@ -14,6 +14,8 @@ import {
 import {
   generateClimbingSession,
   generateNonClimbingOptions,
+  generateWarmup,
+  generateCooldown,
   buildAIContext,
   BOULDER_FOCUS_OPTIONS,
   LEAD_FOCUS_OPTIONS,
@@ -126,6 +128,9 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
   const [showPreview, setShowPreview] = useState(false)
   const [previewOption, setPreviewOption] = useState<TodayOption | null>(null)
   const [previewClimbingSession, setPreviewClimbingSession] = useState<ClimbingSession | null>(null)
+  const [generatedWarmup, setGeneratedWarmup] = useState<string | null>(null)
+  const [generatedCooldown, setGeneratedCooldown] = useState<string | null>(null)
+  const [generatingWarmupCooldown, setGeneratingWarmupCooldown] = useState(false)
 
   // Persist state
   useEffect(() => {
@@ -186,12 +191,52 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     }
   }
 
-  const handleStartTraining = (option: TodayOption) => {
+  // Calculate warmup/cooldown duration based on session duration
+  const getWarmupCooldownDuration = (sessionMinutes: number): 5 | 10 | 15 => {
+    if (sessionMinutes <= 45) return 5
+    if (sessionMinutes <= 90) return 10
+    return 15
+  }
+
+  // Generate warmup and cooldown for a session
+  const generateWarmupAndCooldown = async (
+    sessionType: 'boulder' | 'lead' | 'hangboard' | 'gym' | 'cardio' | 'hiit' | 'crossfit' | 'mobility' | 'core',
+    durationMinutes: number,
+    boulderSubType?: string
+  ) => {
+    setGeneratingWarmupCooldown(true)
+    setGeneratedWarmup(null)
+    setGeneratedCooldown(null)
+
+    const warmupCooldownDuration = getWarmupCooldownDuration(durationMinutes)
+    const context = buildAIContext(lastSessions, null)
+
+    try {
+      // Generate both in parallel
+      const [warmup, cooldown] = await Promise.all([
+        generateWarmup(sessionType, context, boulderSubType, undefined, warmupCooldownDuration),
+        generateCooldown(sessionType, context, undefined, undefined, boulderSubType, warmupCooldownDuration)
+      ])
+      setGeneratedWarmup(warmup)
+      setGeneratedCooldown(cooldown)
+    } catch (err) {
+      console.error('Failed to generate warmup/cooldown:', err)
+      // Continue without warmup/cooldown if generation fails
+    } finally {
+      setGeneratingWarmupCooldown(false)
+    }
+  }
+
+  const handleStartTraining = async (option: TodayOption) => {
     // Show preview if exercises exist
     if (option.exercises && option.exercises.length > 0) {
       setPreviewOption(option)
       setPreviewClimbingSession(null)
       setShowPreview(true)
+      // Generate warmup/cooldown in background (skip if rest day)
+      if (option.sessionType !== 'rest') {
+        generateWarmupAndCooldown(option.sessionType, option.durationMinutes)
+      }
     } else {
       // No exercises to preview, go directly to log
       navigate('/log', {
@@ -202,19 +247,33 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     }
   }
 
-  const handleStartClimbing = (session: ClimbingSession) => {
+  const handleStartClimbing = async (session: ClimbingSession) => {
     // Show preview if structure/exercises exist
     if (session.structure && session.structure.length > 0) {
       setPreviewClimbingSession(session)
       setPreviewOption(null)
       setShowPreview(true)
+      // Generate warmup/cooldown in background
+      generateWarmupAndCooldown(
+        session.type,
+        session.durationMinutes,
+        session.type === 'boulder' ? session.subType : undefined
+      )
     } else {
       // No structure to preview, go directly to log
-      navigateToLogWithClimbing(session, '')
+      navigateToLogWithClimbing(session, '', null, null)
     }
   }
 
-  const navigateToLogWithClimbing = (session: ClimbingSession, notesText: string) => {
+  const navigateToLogWithClimbing = (
+    session: ClimbingSession,
+    notesText: string,
+    warmup: string | null,
+    cooldown: string | null
+  ) => {
+    // Reset SmartSchedule state so it shows "Already Trained" on return
+    localStorage.removeItem(STORAGE_KEY)
+
     navigate('/log', {
       state: {
         prefill: {
@@ -224,26 +283,36 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           description: session.description,
           durationMinutes: session.durationMinutes,
           exercises: session.exercises || [],
-          notes: notesText || undefined
+          notes: notesText || undefined,
+          warmup: warmup || undefined,
+          cooldown: cooldown || undefined
         }
       }
     })
   }
 
   const handlePreviewComplete = (notesText: string) => {
+    // Reset SmartSchedule state so it shows "Already Trained" on return
+    localStorage.removeItem(STORAGE_KEY)
+
     if (previewOption) {
       navigate('/log', {
         state: {
           prefill: {
             ...previewOption,
-            notes: notesText
+            notes: notesText,
+            warmup: generatedWarmup || undefined,
+            cooldown: generatedCooldown || undefined
           }
         }
       })
     } else if (previewClimbingSession) {
-      navigateToLogWithClimbing(previewClimbingSession, notesText)
+      navigateToLogWithClimbing(previewClimbingSession, notesText, generatedWarmup, generatedCooldown)
     }
     setShowPreview(false)
+    // Reset warmup/cooldown state
+    setGeneratedWarmup(null)
+    setGeneratedCooldown(null)
   }
 
   const handleSkipClimbing = () => {
@@ -266,11 +335,17 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     setError(null)
   }
 
+  const handleClosePreview = () => {
+    setShowPreview(false)
+    setGeneratedWarmup(null)
+    setGeneratedCooldown(null)
+  }
+
   // Preview modal component
   const previewModal = (
     <Modal
       isOpen={showPreview}
-      onClose={() => setShowPreview(false)}
+      onClose={handleClosePreview}
       title="Workout Preview"
     >
       {previewOption && previewOption.exercises && (
@@ -282,8 +357,11 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
             sets: ex.sets,
             reps: ex.reps
           }))}
-          onClose={() => setShowPreview(false)}
+          onClose={handleClosePreview}
           onComplete={handlePreviewComplete}
+          warmup={generatedWarmup}
+          cooldown={generatedCooldown}
+          generatingWarmupCooldown={generatingWarmupCooldown}
         />
       )}
       {previewClimbingSession && previewClimbingSession.structure && (
@@ -294,8 +372,11 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
             name: phase.name,
             reps: phase.duration
           }))}
-          onClose={() => setShowPreview(false)}
+          onClose={handleClosePreview}
           onComplete={handlePreviewComplete}
+          warmup={generatedWarmup}
+          cooldown={generatedCooldown}
+          generatingWarmupCooldown={generatingWarmupCooldown}
         />
       )}
     </Modal>

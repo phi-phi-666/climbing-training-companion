@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Check, RotateCcw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, RotateCcw, Loader2, Sparkles, StretchHorizontal } from 'lucide-react'
 
 interface Exercise {
   name: string
@@ -13,6 +13,9 @@ interface WorkoutPreviewProps {
   exercises: Exercise[]
   onClose: () => void
   onComplete: (notesText: string) => void
+  warmup?: string | null
+  cooldown?: string | null
+  generatingWarmupCooldown?: boolean
 }
 
 export default function WorkoutPreview({
@@ -20,10 +23,15 @@ export default function WorkoutPreview({
   description,
   exercises,
   onClose,
-  onComplete
+  onComplete,
+  warmup,
+  cooldown,
+  generatingWarmupCooldown
 }: WorkoutPreviewProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set())
+  const [showWarmupDetail, setShowWarmupDetail] = useState(false)
+  const [showCooldownDetail, setShowCooldownDetail] = useState(false)
 
   const currentExercise = exercises[currentIndex]
   const nextExercise = exercises[currentIndex + 1]
@@ -85,6 +93,84 @@ export default function WorkoutPreview({
 
   return (
     <div className="space-y-4">
+      {/* Warmup/Cooldown status */}
+      {(warmup || cooldown || generatingWarmupCooldown) && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => warmup && setShowWarmupDetail(!showWarmupDetail)}
+            disabled={!warmup}
+            className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg text-xs transition-all ${
+              warmup
+                ? 'bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 cursor-pointer'
+                : 'bg-void-100 text-zinc-500'
+            }`}
+          >
+            {generatingWarmupCooldown && !warmup ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Sparkles size={14} />
+            )}
+            <span>{warmup ? 'Warmup ✓' : 'Generating...'}</span>
+          </button>
+          <button
+            onClick={() => cooldown && setShowCooldownDetail(!showCooldownDetail)}
+            disabled={!cooldown}
+            className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg text-xs transition-all ${
+              cooldown
+                ? 'bg-accent-600/20 text-accent-400 hover:bg-accent-600/30 cursor-pointer'
+                : 'bg-void-100 text-zinc-500'
+            }`}
+          >
+            {generatingWarmupCooldown && !cooldown ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <StretchHorizontal size={14} />
+            )}
+            <span>{cooldown ? 'Cooldown ✓' : 'Generating...'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Warmup detail view */}
+      {showWarmupDetail && warmup && (
+        <div className="bg-rose-900/20 border border-rose-700/30 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs uppercase tracking-wider text-rose-400 font-medium">Warmup</span>
+            <button
+              onClick={() => setShowWarmupDetail(false)}
+              className="text-xs text-zinc-500 hover:text-zinc-300"
+            >
+              Hide
+            </button>
+          </div>
+          <div className="text-sm text-zinc-300 leading-relaxed max-h-32 overflow-y-auto">
+            {warmup.split('\n').map((line, i) => (
+              <p key={i} className={line.trim() ? 'mb-1' : 'mb-2'}>{line}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Cooldown detail view */}
+      {showCooldownDetail && cooldown && (
+        <div className="bg-accent-900/20 border border-accent-700/30 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs uppercase tracking-wider text-accent-400 font-medium">Cooldown</span>
+            <button
+              onClick={() => setShowCooldownDetail(false)}
+              className="text-xs text-zinc-500 hover:text-zinc-300"
+            >
+              Hide
+            </button>
+          </div>
+          <div className="text-sm text-zinc-300 leading-relaxed max-h-32 overflow-y-auto">
+            {cooldown.split('\n').map((line, i) => (
+              <p key={i} className={line.trim() ? 'mb-1' : 'mb-2'}>{line}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center">
         <h3 className="font-semibold text-lg">{title}</h3>
