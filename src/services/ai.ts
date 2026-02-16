@@ -513,6 +513,7 @@ IMPORTANT RULES:
 - For cardio, just include duration in the exercise (e.g., {"name": "Running", "reps": "30 min"})
 - If suggesting recovery activities (foam rolling, yoga, breathing), put them in recoveryNotes, not as the main session
 - durationMinutes should be realistic (30-120 for most sessions, 0 for rest days)
+- Descriptions must ONLY reference sessions that actually appear in the "Recent activity" data above. Do NOT fabricate or assume any training history. If no recent sessions exist, base descriptions on the day of the week and general training principles instead.
 
 Return as JSON with this exact structure:
 {
