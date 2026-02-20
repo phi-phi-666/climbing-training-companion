@@ -15,6 +15,7 @@ interface Exercise {
   name: string
   durationSeconds: number
   originalLine: string
+  side?: 'left' | 'right'  // For bilateral exercises
 }
 
 interface WorkoutTimerProps {
@@ -94,6 +95,11 @@ function parseDuration(text: string): number {
   return 45 * eachSideMultiplier
 }
 
+// Check if an exercise is bilateral (each side)
+function isBilateral(text: string): boolean {
+  return /each\s*side|per\s*side|both\s*sides|left.*right|alternate\s*sides/i.test(text)
+}
+
 // Parse the routine text into exercises
 function parseRoutine(routine: string): Exercise[] {
   const lines = routine.split('\n').filter(line => line.trim())
@@ -149,11 +155,32 @@ function parseRoutine(routine: string): Exercise[] {
     // Parse duration from the FULL original line
     const duration = parseDuration(cleanLine)
 
-    exercises.push({
-      name: name,
-      durationSeconds: duration,
-      originalLine: cleanLine
-    })
+    // Split bilateral exercises into separate left/right entries
+    if (isBilateral(cleanLine)) {
+      // The parseDuration already multiplied by 2 for "each side"
+      // So each side gets half the total duration
+      const perSide = Math.round(duration / 2)
+      // Remove "each side" etc from name for cleaner display
+      const cleanName = name.replace(/\s*\(?\s*each\s*side\s*\)?\s*/i, '').trim()
+      exercises.push({
+        name: `${cleanName} (Left)`,
+        durationSeconds: perSide,
+        originalLine: cleanLine,
+        side: 'left'
+      })
+      exercises.push({
+        name: `${cleanName} (Right)`,
+        durationSeconds: perSide,
+        originalLine: cleanLine,
+        side: 'right'
+      })
+    } else {
+      exercises.push({
+        name: name,
+        durationSeconds: duration,
+        originalLine: cleanLine
+      })
+    }
   }
 
   return exercises
@@ -182,8 +209,52 @@ export default function WorkoutTimer({
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
 
+  const [vibrationEnabled, setVibrationEnabled] = useState(true)
+
   const intervalRef = useRef<number | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
+
+  // Wake Lock - keep screen on during workout
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockRef.current = await navigator.wakeLock.request('screen')
+        }
+      } catch {
+        // Wake Lock not available or denied
+      }
+    }
+
+    if (isPlaying) {
+      requestWakeLock()
+    }
+
+    // Re-acquire on visibility change (e.g. tab switch back)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isPlaying) {
+        requestWakeLock()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      wakeLockRef.current?.release().catch(() => {})
+      wakeLockRef.current = null
+    }
+  }, [isPlaying])
+
+  // Vibrate helper
+  const vibrate = useCallback((pattern: number | number[]) => {
+    if (!vibrationEnabled) return
+    try {
+      navigator.vibrate?.(pattern)
+    } catch {
+      // Vibration not available
+    }
+  }, [vibrationEnabled])
 
   // Play a beep sound
   const playBeep = useCallback((frequency = 800, duration = 150) => {
@@ -246,23 +317,35 @@ export default function WorkoutTimer({
         setCurrentIndex(prev => prev + 1)
         if (currentIndex + 1 < exercises.length) {
           setTimeRemaining(exercises[currentIndex + 1].durationSeconds)
+          // Vibrate: new exercise starting
+          vibrate([200, 100, 200])
         }
       } else if (currentIndex < exercises.length - 1) {
         // Exercise done, start rest period if auto-advance
         if (autoAdvance) {
+          // Shorter rest between sides of same bilateral exercise
+          const nextExercise = exercises[currentIndex + 1]
+          const currentEx = exercises[currentIndex]
+          const isSideSwitch = currentEx?.side === 'left' && nextExercise?.side === 'right'
+            && currentEx.originalLine === nextExercise.originalLine
           setIsResting(true)
-          setTimeRemaining(restBetween)
+          setTimeRemaining(isSideSwitch ? 5 : restBetween)
+          // Vibrate: rest/switch sides
+          vibrate(isSideSwitch ? [100, 50, 100, 50, 100] : [200])
         } else {
           setIsPlaying(false)
+          vibrate([200])
         }
       } else {
         // Workout complete!
         setIsPlaying(false)
         playBeep(1200, 500)
+        // Vibrate: workout complete (long buzz)
+        vibrate([300, 100, 300, 100, 500])
         onComplete()
       }
     }
-  }, [timeRemaining, isResting, currentIndex, exercises, autoAdvance, restBetween, playBeep, onComplete])
+  }, [timeRemaining, isResting, currentIndex, exercises, autoAdvance, restBetween, playBeep, vibrate, onComplete])
 
   const currentExercise = exercises[currentIndex]
   const nextExercise = exercises[currentIndex + 1]
@@ -344,8 +427,8 @@ export default function WorkoutTimer({
 
       {/* Settings panel */}
       {showSettings && (
-        <div className="bg-void-100 rounded-xl p-4 border border-violet-900/20">
-          <div className="flex items-center justify-between mb-3">
+        <div className="bg-void-100 rounded-xl p-4 border border-violet-900/20 space-y-3">
+          <div className="flex items-center justify-between">
             <span className="text-sm text-zinc-300">Auto-advance</span>
             <button
               onClick={() => setAutoAdvance(!autoAdvance)}
@@ -356,6 +439,21 @@ export default function WorkoutTimer({
               <div
                 className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
                   autoAdvance ? 'translate-x-6' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-zinc-300">Vibration</span>
+            <button
+              onClick={() => setVibrationEnabled(!vibrationEnabled)}
+              className={`w-12 h-6 rounded-full transition-colors ${
+                vibrationEnabled ? 'bg-rose-500' : 'bg-zinc-700'
+              }`}
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  vibrationEnabled ? 'translate-x-6' : 'translate-x-0.5'
                 }`}
               />
             </button>
@@ -390,30 +488,41 @@ export default function WorkoutTimer({
       </div>
 
       {/* Current exercise / rest display */}
-      <div className={`p-6 rounded-2xl text-center ${
-        isResting
-          ? 'bg-gradient-to-br from-violet-600 to-indigo-700'
-          : 'bg-gradient-to-br from-rose-600 to-rose-700'
-      }`}>
-        {isResting ? (
-          <>
-            <div className="text-sm uppercase tracking-wider opacity-70 mb-2">Rest</div>
-            <div className="text-5xl font-mono font-bold mb-2">{formatTime(timeRemaining)}</div>
-            <div className="text-sm opacity-80 px-4 line-clamp-2">Up next: {nextExercise?.name}</div>
-          </>
-        ) : (
-          <>
-            <div className="text-sm uppercase tracking-wider opacity-70 mb-1">Current</div>
-            <div className="text-lg font-semibold mb-3 px-2 line-clamp-2 min-h-[3.5rem] flex items-center justify-center">
-              {currentExercise?.name}
-            </div>
-            <div className="text-5xl font-mono font-bold mb-2">{formatTime(timeRemaining)}</div>
-            <div className="text-xs opacity-60">
-              {formatTime(elapsedSeconds)} / {formatTime(totalSeconds)}
-            </div>
-          </>
-        )}
-      </div>
+      {(() => {
+        const isSideSwitch = isResting && currentExercise?.side === 'left'
+          && nextExercise?.side === 'right'
+          && currentExercise.originalLine === nextExercise.originalLine
+        return (
+          <div className={`p-6 rounded-2xl text-center ${
+            isResting
+              ? isSideSwitch
+                ? 'bg-gradient-to-br from-amber-600 to-amber-700'
+                : 'bg-gradient-to-br from-violet-600 to-indigo-700'
+              : 'bg-gradient-to-br from-rose-600 to-rose-700'
+          }`}>
+            {isResting ? (
+              <>
+                <div className="text-sm uppercase tracking-wider opacity-70 mb-2">
+                  {isSideSwitch ? 'Switch Sides' : 'Rest'}
+                </div>
+                <div className="text-5xl font-mono font-bold mb-2">{formatTime(timeRemaining)}</div>
+                <div className="text-sm opacity-80 px-4 line-clamp-2">Up next: {nextExercise?.name}</div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm uppercase tracking-wider opacity-70 mb-1">Current</div>
+                <div className="text-lg font-semibold mb-3 px-2 line-clamp-2 min-h-[3.5rem] flex items-center justify-center">
+                  {currentExercise?.name}
+                </div>
+                <div className="text-5xl font-mono font-bold mb-2">{formatTime(timeRemaining)}</div>
+                <div className="text-xs opacity-60">
+                  {formatTime(elapsedSeconds)} / {formatTime(totalSeconds)}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Controls */}
       <div className="flex items-center justify-center gap-4">

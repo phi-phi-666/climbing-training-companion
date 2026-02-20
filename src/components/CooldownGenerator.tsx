@@ -234,6 +234,23 @@ export default function CooldownGenerator({
             <span>Start Timer</span>
           </button>
 
+          {/* Duration picker for regeneration */}
+          <div className="flex justify-center gap-2">
+            {([5, 10, 15] as CooldownDuration[]).map((dur) => (
+              <button
+                key={dur}
+                onClick={() => setSelectedDuration(dur)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  selectedDuration === dur
+                    ? 'bg-accent-500 text-white'
+                    : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                }`}
+              >
+                {dur} min
+              </button>
+            ))}
+          </div>
+
           <div className="flex gap-3">
             <button
               onClick={handleRegenerateClick}

@@ -1024,3 +1024,30 @@ export async function generateINeedMore(
     throw new Error('Failed to generate workout')
   }
 }
+
+// ============================================
+// Single Exercise Swap
+// ============================================
+
+export async function swapExercise(
+  exerciseName: string,
+  otherExercises: string[],
+  sessionType: string,
+  context?: string
+): Promise<{ name: string; sets?: number; reps?: string }> {
+  const prompt = `I'm doing a ${sessionType} workout. I need to swap out "${exerciseName}" for an alternative exercise that targets the same muscle groups.
+
+Other exercises already in this workout (do NOT suggest any of these):
+${otherExercises.map(e => `- ${e}`).join('\n')}
+
+${context ? `Context: ${context}` : ''}
+
+Return a single JSON object with the replacement exercise:
+{"name": "Exercise Name", "sets": 3, "reps": "8-10"}
+
+Keep sets/reps similar to what you'd expect for the original exercise. IMPORTANT: Return valid JSON only. No markdown.`
+
+  const response = await callOpenRouter(prompt, { json: true })
+  const cleaned = stripMarkdownCodeBlock(response)
+  return JSON.parse(cleaned)
+}

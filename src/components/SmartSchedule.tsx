@@ -16,6 +16,7 @@ import {
   generateNonClimbingOptions,
   generateWarmup,
   generateCooldown,
+  swapExercise,
   buildAIContext,
   BOULDER_FOCUS_OPTIONS,
   LEAD_FOCUS_OPTIONS,
@@ -341,12 +342,23 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     setGeneratedCooldown(null)
   }
 
+  const handleSwapExercise = async (index: number, exercise: { name: string; sets?: number; reps?: string }) => {
+    const allExercises = previewOption?.exercises?.map(e => e.name)
+      || previewClimbingSession?.structure?.map(p => p.name)
+      || []
+    const sessionType = previewOption?.sessionType || previewClimbingSession?.type || 'gym'
+    const otherExercises = allExercises.filter((_, i) => i !== index)
+
+    return swapExercise(exercise.name, otherExercises, sessionType)
+  }
+
   // Preview modal component
+  const previewTitle = previewOption?.title || previewClimbingSession?.title || 'Workout'
   const previewModal = (
     <Modal
       isOpen={showPreview}
       onClose={handleClosePreview}
-      title="Workout Preview"
+      title={previewTitle}
     >
       {previewOption && previewOption.exercises && (
         <WorkoutPreview
@@ -362,6 +374,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           warmup={generatedWarmup}
           cooldown={generatedCooldown}
           generatingWarmupCooldown={generatingWarmupCooldown}
+          onSwapExercise={handleSwapExercise}
         />
       )}
       {previewClimbingSession && previewClimbingSession.structure && (
@@ -377,6 +390,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           warmup={generatedWarmup}
           cooldown={generatedCooldown}
           generatingWarmupCooldown={generatingWarmupCooldown}
+          onSwapExercise={handleSwapExercise}
         />
       )}
     </Modal>
@@ -393,6 +407,18 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
             <p className="text-accent-400 font-semibold">Already trained today</p>
             <p className="text-zinc-500 text-sm mt-1">Rest up for tomorrow</p>
           </div>
+          <button
+            onClick={() => {
+              if (isClimbing) {
+                setViewState({ type: 'climbing_picker' })
+              } else {
+                setViewState({ type: 'location_picker' })
+              }
+            }}
+            className="w-full mt-3 text-sm text-zinc-500 hover:text-zinc-300 py-2"
+          >
+            Log another session
+          </button>
         </div>
       </>
     )

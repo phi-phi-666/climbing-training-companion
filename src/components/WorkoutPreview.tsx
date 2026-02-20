@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Check, RotateCcw, Loader2, Sparkles, StretchHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, RotateCcw, Loader2, Sparkles, StretchHorizontal, RefreshCw } from 'lucide-react'
 
 interface Exercise {
   name: string
@@ -16,22 +16,26 @@ interface WorkoutPreviewProps {
   warmup?: string | null
   cooldown?: string | null
   generatingWarmupCooldown?: boolean
+  onSwapExercise?: (index: number, exercise: Exercise) => Promise<Exercise>
 }
 
 export default function WorkoutPreview({
   title,
   description,
-  exercises,
+  exercises: initialExercises,
   onClose,
   onComplete,
   warmup,
   cooldown,
-  generatingWarmupCooldown
+  generatingWarmupCooldown,
+  onSwapExercise
 }: WorkoutPreviewProps) {
+  const [exercises, setExercises] = useState(initialExercises)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set())
   const [showWarmupDetail, setShowWarmupDetail] = useState(false)
   const [showCooldownDetail, setShowCooldownDetail] = useState(false)
+  const [swappingIndex, setSwappingIndex] = useState<number | null>(null)
 
   const currentExercise = exercises[currentIndex]
   const nextExercise = exercises[currentIndex + 1]
@@ -71,6 +75,23 @@ export default function WorkoutPreview({
       .join('\n')
 
     onComplete(notesText)
+  }
+
+  const handleSwap = async (index: number) => {
+    if (!onSwapExercise || swappingIndex !== null) return
+    setSwappingIndex(index)
+    try {
+      const replacement = await onSwapExercise(index, exercises[index])
+      setExercises(prev => {
+        const updated = [...prev]
+        updated[index] = replacement
+        return updated
+      })
+    } catch {
+      // Swap failed, keep original
+    } finally {
+      setSwappingIndex(null)
+    }
   }
 
   const handleRestart = () => {
@@ -183,24 +204,38 @@ export default function WorkoutPreview({
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 bg-void-100 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-void-100 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-300"
+          className="h-full bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-300 rounded-full"
           style={{ width: `${progress}%` }}
         />
       </div>
 
       {/* Current exercise display */}
-      <div className="p-6 rounded-2xl text-center bg-gradient-to-br from-rose-600 to-rose-700">
+      <div className="p-6 rounded-2xl text-center bg-gradient-to-br from-rose-600 to-rose-700 relative">
         <div className="text-sm uppercase tracking-wider opacity-70 mb-1">Current</div>
         <div className="text-xl font-semibold mb-3 px-2 min-h-[3.5rem] flex items-center justify-center">
-          {currentExercise?.name}
+          {swappingIndex === currentIndex ? (
+            <Loader2 size={24} className="animate-spin opacity-70" />
+          ) : (
+            currentExercise?.name
+          )}
         </div>
         {(currentExercise?.sets || currentExercise?.reps) && (
           <div className="text-lg font-mono opacity-90">
             {currentExercise.sets && `${currentExercise.sets}×`}
             {currentExercise.reps || ''}
           </div>
+        )}
+        {onSwapExercise && (
+          <button
+            onClick={() => handleSwap(currentIndex)}
+            disabled={swappingIndex !== null}
+            className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white/70 hover:text-white transition-all disabled:opacity-30"
+            title="Swap exercise"
+          >
+            <RefreshCw size={14} />
+          </button>
         )}
       </div>
 

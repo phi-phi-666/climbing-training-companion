@@ -450,9 +450,12 @@ export default function LogSession() {
 
   return (
     <div className="space-y-3 pt-2">
-      {/* Prefill indicator */}
+      {/* Page header */}
+      <h1 className="font-display text-xl tracking-wide text-center">
+        {prefill ? 'LOG SESSION' : 'LOG SESSION'}
+      </h1>
       {prefill && (
-        <div className="text-center text-rose-400 text-sm py-1">
+        <div className="text-center text-rose-400 text-sm -mt-1">
           Pre-filled from Today's Plan
         </div>
       )}
