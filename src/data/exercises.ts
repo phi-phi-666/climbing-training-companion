@@ -258,6 +258,24 @@ export function getExercisesForGroups(groups: MuscleGroup[], isCrossfit: boolean
   return groups.flatMap((group) => exerciseMap[group])
 }
 
+export function getMergedExercisesByGroup(
+  customExercises: { name: string; muscleGroup: string }[]
+): Record<MuscleGroup, string[]> {
+  const merged: Record<string, string[]> = {}
+  for (const group of muscleGroups) {
+    merged[group] = [...exercisesByGroup[group]]
+  }
+  for (const ex of customExercises) {
+    const group = ex.muscleGroup as MuscleGroup
+    if (merged[group]) {
+      if (!merged[group].includes(ex.name)) {
+        merged[group].push(ex.name)
+      }
+    }
+  }
+  return merged as Record<MuscleGroup, string[]>
+}
+
 export function getMuscleGroupForExercise(
   exerciseName: string,
   isCrossfit: boolean = false

@@ -13,6 +13,7 @@ import {
   ChevronDown,
   CalendarDays,
   Trash2,
+  Star,
   type LucideIcon
 } from 'lucide-react'
 
@@ -138,10 +139,16 @@ export default function History() {
                           <Icon size={20} strokeWidth={1.5} className="text-rose-400" />
                           <div>
                             <div className="font-medium text-sm">{getSessionLabel(session)}</div>
-                            <div className="text-xs text-zinc-500">
-                              {session.durationMinutes}m
+                            <div className="text-xs text-zinc-500 flex items-center gap-1">
+                              <span>{session.durationMinutes}m</span>
                               {session.exercises.length > 0 && (
-                                <span> · {session.exercises.length} exercises</span>
+                                <span>· {session.exercises.length} exercises</span>
+                              )}
+                              {session.sessionRating && (
+                                <span className="flex items-center gap-0.5 ml-1">
+                                  <Star size={10} className="fill-amber-400 text-amber-400" />
+                                  <span className="text-amber-400">{session.sessionRating}</span>
+                                </span>
                               )}
                             </div>
                           </div>
@@ -197,6 +204,40 @@ export default function History() {
                               </button>
                             )}
                           </div>
+
+                          {/* Rating / RPE / Fatigue */}
+                          {(session.sessionRating || session.perceivedExertion || session.fatigueLevel) && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              {session.sessionRating && (
+                                <div className="flex items-center gap-0.5">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star
+                                      key={s}
+                                      size={12}
+                                      className={s <= session.sessionRating!
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-zinc-700'}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              {session.perceivedExertion && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  session.perceivedExertion <= 3 ? 'bg-green-500/20 text-green-400'
+                                    : session.perceivedExertion <= 6 ? 'bg-amber-500/20 text-amber-400'
+                                    : session.perceivedExertion <= 8 ? 'bg-orange-500/20 text-orange-400'
+                                    : 'bg-red-500/20 text-red-400'
+                                }`}>
+                                  RPE {session.perceivedExertion}
+                                </span>
+                              )}
+                              {session.fatigueLevel && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-void-50 text-zinc-400">
+                                  {['', 'Fresh', 'Good', 'Normal', 'Tired', 'Wrecked'][session.fatigueLevel]}
+                                </span>
+                              )}
+                            </div>
+                          )}
 
                           {session.exercises.length > 0 && (
                             <div>

@@ -7,6 +7,7 @@ export interface AIContext {
   lastSessions: Session[]
   currentDay: string
   scheduledClimbing: string[]
+  customExerciseNames?: string[]
 }
 
 interface OpenRouterResponse {
@@ -61,7 +62,9 @@ function formatRecentSessions(sessions: Session[]): string {
         s.exercises.length > 0
           ? ` - ${s.exercises.map((e) => e.name).join(', ')}`
           : ''
-      return `- ${s.date}: ${s.type}${subType} (${s.durationMinutes}min)${exercises}`
+      const ratingInfo = s.sessionRating ? ` [${s.sessionRating}/5]` : ''
+      const rpeInfo = s.perceivedExertion ? ` RPE:${s.perceivedExertion}` : ''
+      return `- ${s.date}: ${s.type}${subType} (${s.durationMinutes}min)${ratingInfo}${rpeInfo}${exercises}`
     })
     .join('\n')
 }
@@ -412,6 +415,7 @@ export interface SuggestedExercise {
   name: string
   sets?: number
   reps?: string  // Can be "8-12" or "30 sec" etc.
+  supersetGroup?: number  // Exercises with same number are grouped as supersets/circuits
 }
 
 export interface TodayOption {
@@ -476,8 +480,12 @@ Example rest day option:
 }
 ` : ''
 
-  return `Today is ${context.currentDay}.
+  const customExerciseText = context.customExerciseNames && context.customExerciseNames.length > 0
+    ? `\nUser's custom exercises (use when appropriate): ${context.customExerciseNames.join(', ')}\n`
+    : ''
 
+  return `Today is ${context.currentDay}.
+${customExerciseText}
 Fixed climbing schedule:
 - Monday: Bouldering
 - Wednesday: Bouldering
@@ -514,6 +522,7 @@ IMPORTANT RULES:
 - If suggesting recovery activities (foam rolling, yoga, breathing), put them in recoveryNotes, not as the main session
 - durationMinutes should be realistic (30-120 for most sessions, 0 for rest days)
 - Descriptions must ONLY reference sessions that actually appear in the "Recent activity" data above. Do NOT fabricate or assume any training history. If no recent sessions exist, base descriptions on the day of the week and general training principles instead.
+- SUPERSET GROUPING: For gym/strength exercises, you can group 2-3 exercises as supersets by giving them the same "supersetGroup" number. Only use when it makes training sense (antagonist pairs, pre-exhaust, etc.). Example: {"name": "Pull-ups", "sets": 3, "reps": "8", "supersetGroup": 1}, {"name": "Dips", "sets": 3, "reps": "10", "supersetGroup": 1}
 
 Return as JSON with this exact structure:
 {
@@ -786,11 +795,15 @@ function buildNonClimbingOptionsPrompt(
     outdoor: 'bodyweight only, outdoor space'
   }
 
+  const customExerciseText = context.customExerciseNames && context.customExerciseNames.length > 0
+    ? `\nUser's custom exercises (use when appropriate): ${context.customExerciseNames.join(', ')}`
+    : ''
+
   return `Generate 3 workout options for today.
 
 Location: ${location.toUpperCase()}
 Available equipment: ${locationEquipment[location]}
-Allowed session types: ${allowedTypes.join(', ')}
+Allowed session types: ${allowedTypes.join(', ')}${customExerciseText}
 
 Today is ${context.currentDay}.
 
@@ -808,6 +821,8 @@ Generate 3 options with varying intensity:
 2. MEDIUM effort - solid training
 3. LOW effort - recovery/light activity
 
+SUPERSET GROUPING: For strength exercises, you can group 2-3 exercises as supersets by giving them the same "supersetGroup" number. Only use when sensible (antagonist pairs, compound sets).
+
 Return as JSON:
 {
   "options": [
@@ -817,7 +832,9 @@ Return as JSON:
       "description": "Why this fits today",
       "sessionType": "one of allowed types",
       "exercises": [
-        {"name": "Exercise", "sets": 3, "reps": "10-12"}
+        {"name": "Exercise", "sets": 3, "reps": "10-12"},
+        {"name": "Superset A1", "sets": 3, "reps": "8", "supersetGroup": 1},
+        {"name": "Superset A2", "sets": 3, "reps": "10", "supersetGroup": 1}
       ],
       "durationMinutes": 45
     }
@@ -989,14 +1006,16 @@ Requirements:
 - Description should explain the benefit in one sentence
 - List which muscle groups are targeted
 
+SUPERSET GROUPING: You can group 2 exercises as supersets using "supersetGroup" (same number = same superset). Use for antagonist pairs or compound sets.
+
 Return as JSON:
 {
   "title": "Catchy 2-4 word title",
   "description": "One sentence explaining the focus and benefit",
   "muscleGroups": ["chest", "shoulders", "triceps"],
   "exercises": [
-    {"name": "Push-ups", "sets": 3, "reps": "12-15"},
-    {"name": "Face pulls", "sets": 3, "reps": "15-20"},
+    {"name": "Push-ups", "sets": 3, "reps": "12-15", "supersetGroup": 1},
+    {"name": "Face pulls", "sets": 3, "reps": "15-20", "supersetGroup": 1},
     {"name": "Hollow body holds", "sets": 3, "reps": "30 sec"}
   ],
   "notes": "Optional coaching tip or reminder"
@@ -1022,6 +1041,123 @@ export async function generateINeedMore(
   } catch (parseError) {
     console.error('Failed to parse I Need More result:', parseError, 'Response:', response)
     throw new Error('Failed to generate workout')
+  }
+}
+
+// ============================================
+// Mesocycle / Training Plan Generation
+// ============================================
+
+export type MesocycleGoal = 'strength' | 'endurance' | 'peak' | 'general'
+
+export interface GeneratedMesocyclePlan {
+  name: string
+  weeks: {
+    weekNumber: number
+    theme: string
+    intensity: number
+    days: Record<string, {
+      sessionType: string
+      focus?: string
+      intensity?: string
+      exercises?: { name: string; sets?: number; reps?: string }[]
+      notes?: string
+    }>
+  }[]
+}
+
+function buildMesocyclePrompt(
+  goal: MesocycleGoal,
+  weeks: number,
+  context: AIContext
+): string {
+  const goalDescriptions: Record<MesocycleGoal, string> = {
+    strength: 'Build maximum finger strength and pulling power. Focus on hangboard progression, limit bouldering, and weighted exercises.',
+    endurance: 'Build climbing endurance and work capacity. Focus on volume climbing, ARCing, and circuit training.',
+    peak: 'Peak performance for a specific date/comp. Taper intensity, sharpen skills, reduce volume.',
+    general: 'Well-rounded climbing fitness. Balance strength, endurance, technique, and cross-training.'
+  }
+
+  return `Generate a ${weeks}-week mesocycle training plan for a climber.
+
+GOAL: ${goal.toUpperCase()} - ${goalDescriptions[goal]}
+
+Fixed climbing schedule:
+- Monday: Bouldering
+- Wednesday: Bouldering
+- Saturday: Lead climbing
+- Other days: Cross-training, hangboard, rest, mobility, cardio, etc.
+
+Recent activity (last 7 days):
+${formatRecentSessions(context.lastSessions)}
+
+Today is ${context.currentDay}.
+
+PERIODIZATION PRINCIPLES:
+- Progressive overload: gradually increase intensity/volume
+- Deload: reduce volume every 3-4 weeks (or final week for peak)
+- Variety: different session types across the week
+- Recovery: at least 1-2 rest days per week
+- Specificity: align non-climbing days with the goal
+
+Session types to use (MUST be one of these):
+- boulder, lead, hangboard, gym, cardio, hiit, crossfit, mobility, core, rest
+
+For each day of the week (Mon-Sun), specify:
+- sessionType: one of the types above
+- focus: brief training focus (e.g., "Power endurance", "Max hangs", "Active recovery")
+- intensity: "low", "moderate", "hard", or "max"
+- notes: optional coaching note
+
+IMPORTANT RULES:
+- Monday MUST be "boulder" sessionType
+- Wednesday MUST be "boulder" sessionType
+- Saturday MUST be "lead" sessionType
+- At least 1 rest day per week
+- Deload weeks should reduce intensity and volume
+- Each week should have a clear theme
+- Intensity is 1-10 scale per week (1=deload, 10=peak)
+- Name should be catchy and describe the plan (2-5 words)
+
+Return as JSON:
+{
+  "name": "Catchy Plan Name",
+  "weeks": [
+    {
+      "weekNumber": 1,
+      "theme": "Foundation Building",
+      "intensity": 6,
+      "days": {
+        "mon": {"sessionType": "boulder", "focus": "Volume climbing", "intensity": "moderate", "notes": "Flash-level problems"},
+        "tue": {"sessionType": "gym", "focus": "Pull strength", "intensity": "moderate"},
+        "wed": {"sessionType": "boulder", "focus": "Technique", "intensity": "moderate"},
+        "thu": {"sessionType": "rest", "focus": "Recovery"},
+        "fri": {"sessionType": "hangboard", "focus": "Max hangs", "intensity": "hard"},
+        "sat": {"sessionType": "lead", "focus": "Endurance laps", "intensity": "moderate"},
+        "sun": {"sessionType": "mobility", "focus": "Full body", "intensity": "low"}
+      }
+    }
+  ]
+}
+
+IMPORTANT: Return valid JSON only. No markdown, no code blocks. Each week must have all 7 days (mon-sun).`
+}
+
+export async function generateMesocycle(
+  goal: MesocycleGoal,
+  weeks: number,
+  context: AIContext
+): Promise<GeneratedMesocyclePlan> {
+  const prompt = buildMesocyclePrompt(goal, weeks, context)
+  const response = await callOpenRouter(prompt, { json: true })
+  const cleaned = stripMarkdownCodeBlock(response)
+
+  try {
+    const parsed = JSON.parse(cleaned)
+    return parsed as GeneratedMesocyclePlan
+  } catch (parseError) {
+    console.error('Failed to parse mesocycle:', parseError, 'Response:', response)
+    throw new Error('Failed to generate training plan')
   }
 }
 

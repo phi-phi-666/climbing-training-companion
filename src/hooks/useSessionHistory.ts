@@ -129,4 +129,60 @@ export function useLastClimbingSession(): Session | null {
   return session ?? null
 }
 
+export interface ExerciseHistory {
+  lastPerformed: string
+  lastWeight?: number
+  lastReps?: number[]
+  daysAgo: number
+}
+
+export function useExerciseHistoryBatch(exerciseNames: string[]): Map<string, ExerciseHistory> {
+  const sessions = useLiveQuery(
+    () => db.sessions.orderBy('createdAt').reverse().limit(100).toArray(),
+    []
+  )
+
+  if (!sessions || exerciseNames.length === 0) return new Map()
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const result = new Map<string, ExerciseHistory>()
+
+  for (const name of exerciseNames) {
+    const lowerName = name.toLowerCase()
+    for (const session of sessions) {
+      const match = session.exercises.find(e => {
+        const eName = e.name.toLowerCase()
+        return eName === lowerName || eName.includes(lowerName) || lowerName.includes(eName)
+      })
+      if (match) {
+        const sessionDate = new Date(session.date)
+        sessionDate.setHours(0, 0, 0, 0)
+        const daysAgo = Math.floor((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24))
+        result.set(name, {
+          lastPerformed: session.date,
+          lastWeight: match.actualWeight,
+          lastReps: match.actualReps,
+          daysAgo
+        })
+        break
+      }
+    }
+  }
+
+  return result
+}
+
+export function useSessionsByDateRange(startDate: string, endDate: string) {
+  const sessions = useLiveQuery(
+    () =>
+      db.sessions
+        .where('date')
+        .between(startDate, endDate, true, true)
+        .toArray(),
+    [startDate, endDate]
+  )
+  return sessions ?? []
+}
+
 export type { Session, Exercise }

@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useRecentSessions, useDaysSinceLastSession, useHasSessionToday } from '../hooks/useSessionHistory'
+import { useActiveMesocycle } from '../hooks/useMesocycle'
 import { sessionTypes, boulderSubTypes, cardioSubTypes } from '../data/exercises'
 import Modal from './ui/Modal'
 import Accordion from './ui/Accordion'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
 import SmartSchedule from './SmartSchedule'
+import StatsDashboard from './StatsDashboard'
+import MesocyclePlanner from './MesocyclePlanner'
 import type { Session } from '../services/db'
 import {
   Mountain,
@@ -19,6 +22,9 @@ import {
   Sparkles,
   Sun,
   Clock,
+  BarChart2,
+  CalendarRange,
+  Coffee,
   type LucideIcon
 } from 'lucide-react'
 
@@ -42,6 +48,8 @@ export default function Dashboard() {
   const [warmupSessionType, setWarmupSessionType] = useState<Session['type']>('boulder')
   const [showCooldown, setShowCooldown] = useState(false)
   const [cooldownSessionType, setCooldownSessionType] = useState<Session['type']>('boulder')
+  const [showMesocyclePlanner, setShowMesocyclePlanner] = useState(false)
+  const activeMesocycle = useActiveMesocycle()
 
   const handleQuickWarmup = (type: Session['type']) => {
     setWarmupSessionType(type)
@@ -81,8 +89,60 @@ export default function Dashboard() {
         </p>
       </header>
 
+      {/* Active Mesocycle Card */}
+      {activeMesocycle && (
+        <button
+          onClick={() => setShowMesocyclePlanner(true)}
+          className="w-full bg-gradient-to-r from-rose-900/40 to-violet-900/40 border border-rose-500/20 rounded-xl p-4 text-left hover:from-rose-900/50 hover:to-violet-900/50 transition-all"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <CalendarRange size={16} className="text-rose-400" />
+              <span className="font-semibold text-sm">{activeMesocycle.name}</span>
+            </div>
+            <span className="text-[10px] text-zinc-500">
+              Week {activeMesocycle.currentWeek}/{activeMesocycle.weeks}
+            </span>
+          </div>
+          <div className="h-1.5 bg-void-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-rose-500 to-rose-400 rounded-full transition-all"
+              style={{ width: `${(activeMesocycle.currentWeek / activeMesocycle.weeks) * 100}%` }}
+            />
+          </div>
+          {(() => {
+            const dayIndex = new Date().getDay()
+            const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+            const todayKey = dayKeys[dayIndex]
+            const currentWeekPlan = activeMesocycle.plan.find(w => w.weekNumber === activeMesocycle.currentWeek)
+            const todayPlan = currentWeekPlan?.days[todayKey]
+            if (!todayPlan) return null
+            const SessionIcon = ({
+              boulder: Mountain, lead: Mountain, hangboard: Hand, gym: Dumbbell,
+              cardio: Footprints, hiit: Flame, crossfit: Zap, mobility: StretchHorizontal,
+              core: Dumbbell, rest: Coffee
+            } as Record<string, LucideIcon>)[todayPlan.sessionType] || Dumbbell
+            return (
+              <div className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
+                <SessionIcon size={12} />
+                <span>Today: {todayPlan.focus || todayPlan.sessionType}</span>
+              </div>
+            )
+          })()}
+        </button>
+      )}
+
       {/* Smart Schedule - Main feature */}
       <SmartSchedule hasSessionToday={hasSessionToday} />
+
+      {/* Stats Dashboard */}
+      <Accordion
+        title="STATS"
+        icon={<BarChart2 size={18} />}
+        defaultOpen={false}
+      >
+        <StatsDashboard />
+      </Accordion>
 
       {/* Days Since - Accordion */}
       <Accordion
@@ -146,6 +206,16 @@ export default function Dashboard() {
         </div>
       </Accordion>
 
+      {/* Training Plan - Accordion */}
+      <Accordion
+        title="TRAINING PLAN"
+        icon={<CalendarRange size={18} />}
+        badge={activeMesocycle ? `W${activeMesocycle.currentWeek}` : undefined}
+        defaultOpen={false}
+      >
+        <MesocyclePlanner onClose={() => {}} />
+      </Accordion>
+
       {/* Recent Sessions - Accordion */}
       <Accordion
         title="RECENT"
@@ -198,6 +268,14 @@ export default function Dashboard() {
           sessionType={cooldownSessionType}
           onClose={() => setShowCooldown(false)}
         />
+      </Modal>
+
+      <Modal
+        isOpen={showMesocyclePlanner}
+        onClose={() => setShowMesocyclePlanner(false)}
+        title="Training Plan"
+      >
+        <MesocyclePlanner onClose={() => setShowMesocyclePlanner(false)} />
       </Modal>
     </div>
   )

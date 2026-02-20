@@ -23,6 +23,7 @@ import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
 import INeedMoreGenerator from './INeedMoreGenerator'
 import { useToast } from './ui/Toast'
+import { useActiveMesocycle } from '../hooks/useMesocycle'
 import type { TodayOption } from '../services/ai'
 
 // Extended prefill type with warmup/cooldown from SmartSchedule
@@ -50,6 +51,9 @@ import {
   Loader2,
   Plus,
   Maximize2,
+  Star,
+  Gauge,
+  Battery,
   type LucideIcon
 } from 'lucide-react'
 
@@ -70,6 +74,9 @@ interface LogFormState {
   notes: string
   warmup: string | null
   cooldown: string | null
+  sessionRating: number | null
+  perceivedExertion: number | null
+  fatigueLevel: number | null
   _savedAt: string  // ISO date to check freshness
 }
 
@@ -162,6 +169,7 @@ export default function LogSession() {
   const navigate = useNavigate()
   const location = useLocation()
   const { showToast } = useToast()
+  const activeMesocycle = useActiveMesocycle()
   const prefill = (location.state as { prefill?: PrefillData })?.prefill
 
   // Load saved state from localStorage
@@ -180,6 +188,9 @@ export default function LogSession() {
   const [notes, setNotes] = useState(savedState?.notes ?? '')
   const [warmup, setWarmup] = useState<string | null>(savedState?.warmup ?? null)
   const [cooldown, setCooldown] = useState<string | null>(savedState?.cooldown ?? null)
+  const [sessionRating, setSessionRating] = useState<number | null>(savedState?.sessionRating ?? null)
+  const [perceivedExertion, setPerceivedExertion] = useState<number | null>(savedState?.perceivedExertion ?? null)
+  const [fatigueLevel, setFatigueLevel] = useState<number | null>(savedState?.fatigueLevel ?? null)
   const [supplementary, setSupplementary] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showWarmup, setShowWarmup] = useState(false)
@@ -300,7 +311,10 @@ export default function LogSession() {
       duration,
       notes,
       warmup,
-      cooldown
+      cooldown,
+      sessionRating,
+      perceivedExertion,
+      fatigueLevel
     })
   }, [
     sessionDate,
@@ -316,6 +330,9 @@ export default function LogSession() {
     notes,
     warmup,
     cooldown,
+    sessionRating,
+    perceivedExertion,
+    fatigueLevel,
     prefill
   ])
 
@@ -442,6 +459,13 @@ export default function LogSession() {
       }
     }
 
+    // Get mesocycle info if active
+    const dayIndex = new Date(sessionDate).getDay()
+    const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+    const todayKey = dayKeys[dayIndex]
+    const mesocycleWeekPlan = activeMesocycle?.plan.find(w => w.weekNumber === activeMesocycle.currentWeek)
+    const mesocycleDayNum = mesocycleWeekPlan?.days[todayKey] ? dayIndex : undefined
+
     await addSession({
       date: sessionDate,
       type: sessionType,
@@ -451,7 +475,13 @@ export default function LogSession() {
       durationMinutes: duration,
       notes: finalNotes || undefined,
       warmup: warmup || undefined,
-      cooldown: cooldown || undefined
+      cooldown: cooldown || undefined,
+      sessionRating: sessionRating || undefined,
+      perceivedExertion: perceivedExertion || undefined,
+      fatigueLevel: fatigueLevel || undefined,
+      mesocycleId: activeMesocycle?.id || undefined,
+      mesocycleWeek: activeMesocycle?.currentWeek || undefined,
+      mesocycleDay: mesocycleDayNum
     })
 
     // Clear saved form state after successful save
@@ -771,6 +801,95 @@ LOG SESSION
           >
             <Maximize2 size={16} />
           </button>
+        </div>
+      </Accordion>
+
+      {/* Session Rating & RPE */}
+      <Accordion
+        title="HOW DID IT GO?"
+        icon={<Star size={16} />}
+        badge={sessionRating ? `${sessionRating}/5` : undefined}
+        defaultOpen={false}
+      >
+        <div className="space-y-4">
+          {/* Star Rating */}
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Rating</div>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setSessionRating(sessionRating === star ? null : star)}
+                  className="p-1 transition-all"
+                >
+                  <Star
+                    size={28}
+                    strokeWidth={1.5}
+                    className={star <= (sessionRating || 0)
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'text-zinc-600 hover:text-zinc-400'}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* RPE */}
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5">
+              <Gauge size={10} />
+              RPE (perceived exertion)
+            </div>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rpe) => (
+                <button
+                  key={rpe}
+                  onClick={() => setPerceivedExertion(perceivedExertion === rpe ? null : rpe)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                    perceivedExertion === rpe
+                      ? rpe <= 3 ? 'bg-green-500 text-white'
+                        : rpe <= 6 ? 'bg-amber-500 text-white'
+                        : rpe <= 8 ? 'bg-orange-500 text-white'
+                        : 'bg-red-500 text-white'
+                      : 'bg-void-100 text-zinc-500 hover:text-zinc-300 border border-violet-900/20'
+                  }`}
+                >
+                  {rpe}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Pre-session Fatigue */}
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5">
+              <Battery size={10} />
+              Pre-session energy
+            </div>
+            <div className="flex gap-1.5">
+              {[
+                { value: 1, label: 'Fresh' },
+                { value: 2, label: 'Good' },
+                { value: 3, label: 'Normal' },
+                { value: 4, label: 'Tired' },
+                { value: 5, label: 'Wrecked' }
+              ].map((level) => (
+                <button
+                  key={level.value}
+                  onClick={() => setFatigueLevel(fatigueLevel === level.value ? null : level.value)}
+                  className={`flex-1 py-2 rounded-lg text-[10px] font-medium transition-all ${
+                    fatigueLevel === level.value
+                      ? level.value <= 2 ? 'bg-green-500 text-white'
+                        : level.value === 3 ? 'bg-amber-500 text-white'
+                        : 'bg-red-500 text-white'
+                      : 'bg-void-100 text-zinc-500 hover:text-zinc-300 border border-violet-900/20'
+                  }`}
+                >
+                  {level.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </Accordion>
 

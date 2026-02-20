@@ -366,7 +366,8 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           exercises={previewOption.exercises.map(ex => ({
             name: ex.name,
             sets: ex.sets,
-            reps: ex.reps
+            reps: ex.reps,
+            supersetGroup: ex.supersetGroup
           }))}
           onClose={handleClosePreview}
           onComplete={handlePreviewComplete}

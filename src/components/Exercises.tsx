@@ -4,7 +4,9 @@ import {
   categoryLabels,
   type ExerciseInfo
 } from '../data/exerciseDescriptions'
+import { useCustomExercises, addCustomExercise, deleteCustomExercise } from '../hooks/useCustomExercises'
 import Accordion from './ui/Accordion'
+import Modal from './ui/Modal'
 import {
   Search,
   Flame,
@@ -17,7 +19,9 @@ import {
   ChevronDown,
   ChevronUp,
   X,
-  Youtube
+  Youtube,
+  Plus,
+  Trash2
 } from 'lucide-react'
 
 // Icons for each category
@@ -56,15 +60,32 @@ const categoryOrder: ExerciseInfo['category'][] = [
 export default function Exercises() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newExName, setNewExName] = useState('')
+  const [newExCategory, setNewExCategory] = useState<ExerciseInfo['category']>('strength')
+  const [newExMuscleGroup, setNewExMuscleGroup] = useState('')
+  const [newExDescription, setNewExDescription] = useState('')
+  const customExercises = useCustomExercises()
+
+  // Merge custom exercises into the database
+  const allExercises = useMemo(() => {
+    const custom: ExerciseInfo[] = customExercises.map(ce => ({
+      name: ce.name,
+      namePl: ce.namePl || '',
+      description: ce.description || 'Custom exercise',
+      category: ce.category as ExerciseInfo['category']
+    }))
+    return [...exerciseDatabase, ...custom]
+  }, [customExercises])
 
   // Group exercises by category
   const exercisesByCategory = useMemo(() => {
     const grouped: Record<string, ExerciseInfo[]> = {}
     for (const category of categoryOrder) {
-      grouped[category] = exerciseDatabase.filter(e => e.category === category)
+      grouped[category] = allExercises.filter(e => e.category === category)
     }
     return grouped
-  }, [])
+  }, [allExercises])
 
   // Filter exercises based on search
   const filteredByCategory = useMemo(() => {
@@ -107,27 +128,56 @@ export default function Exercises() {
 
   const hasResults = Object.keys(filteredByCategory).length > 0
 
+  const customExerciseNames = new Set(customExercises.map(ce => ce.name))
+
+  const handleAddCustom = async () => {
+    if (!newExName.trim()) return
+    await addCustomExercise({
+      name: newExName.trim(),
+      muscleGroup: newExMuscleGroup || 'core',
+      category: newExCategory,
+      description: newExDescription.trim() || undefined,
+    })
+    setNewExName('')
+    setNewExDescription('')
+    setShowAddModal(false)
+  }
+
+  const handleDeleteCustom = async (name: string) => {
+    const ex = customExercises.find(ce => ce.name === name)
+    if (ex?.id) await deleteCustomExercise(ex.id)
+  }
+
   return (
     <div className="space-y-3 pt-2">
-      {/* Search bar */}
+      {/* Search bar + Add button */}
       <div className="card py-3">
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search exercises (EN/PL)..."
-            className="input pl-10 pr-10"
-          />
-          {searchQuery && (
-            <button
-              onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-            >
-              <X size={18} />
-            </button>
-          )}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search exercises (EN/PL)..."
+              className="input pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="p-2.5 rounded-xl bg-rose-500 text-white hover:bg-rose-400 transition-all flex-shrink-0"
+            title="Add custom exercise"
+          >
+            <Plus size={20} />
+          </button>
         </div>
 
         {/* Search results count */}
@@ -191,6 +241,11 @@ export default function Exercises() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {customExerciseNames.has(exercise.name) && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400">
+                            Custom
+                          </span>
+                        )}
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${categoryBadgeColors[category]}`}>
                           {categoryLabels[category].en}
                         </span>
@@ -207,16 +262,27 @@ export default function Exercises() {
                         <p className="text-sm text-zinc-400 leading-relaxed mb-3">
                           {exercise.description}
                         </p>
-                        <a
-                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' exercise tutorial')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Youtube size={14} />
-                          <span>Watch tutorial</span>
-                        </a>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' exercise tutorial')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Youtube size={14} />
+                            <span>Watch tutorial</span>
+                          </a>
+                          {customExerciseNames.has(exercise.name) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteCustom(exercise.name) }}
+                              className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 size={12} />
+                              <span>Delete</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -226,6 +292,75 @@ export default function Exercises() {
           </Accordion>
         )
       })}
+
+      {/* Add Custom Exercise Modal */}
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Custom Exercise">
+        <div className="space-y-4">
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 block">Name</label>
+            <input
+              type="text"
+              value={newExName}
+              onChange={(e) => setNewExName(e.target.value)}
+              placeholder="Exercise name"
+              className="input"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 block">Category</label>
+            <div className="flex flex-wrap gap-1.5">
+              {categoryOrder.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setNewExCategory(cat)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    newExCategory === cat
+                      ? 'bg-rose-500 text-white'
+                      : 'bg-void-100 text-zinc-400 border border-violet-900/20'
+                  }`}
+                >
+                  {categoryLabels[cat].en}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 block">Muscle Group</label>
+            <div className="flex flex-wrap gap-1.5">
+              {['fingers', 'forearms', 'shoulders', 'back', 'core', 'chest', 'triceps', 'legs'].map((mg) => (
+                <button
+                  key={mg}
+                  onClick={() => setNewExMuscleGroup(mg)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+                    newExMuscleGroup === mg
+                      ? 'bg-rose-500 text-white'
+                      : 'bg-void-100 text-zinc-400 border border-violet-900/20'
+                  }`}
+                >
+                  {mg}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 block">Description (optional)</label>
+            <textarea
+              value={newExDescription}
+              onChange={(e) => setNewExDescription(e.target.value)}
+              placeholder="How to perform this exercise..."
+              className="input min-h-16 resize-none text-sm"
+            />
+          </div>
+          <button
+            onClick={handleAddCustom}
+            disabled={!newExName.trim()}
+            className="btn-primary w-full py-3 disabled:opacity-50"
+          >
+            Add Exercise
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
