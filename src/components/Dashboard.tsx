@@ -4,8 +4,6 @@ import { useActiveMesocycle } from '../hooks/useMesocycle'
 import { sessionTypes, boulderSubTypes, cardioSubTypes } from '../data/exercises'
 import Modal from './ui/Modal'
 import Accordion from './ui/Accordion'
-import WarmupGenerator from './WarmupGenerator'
-import CooldownGenerator from './CooldownGenerator'
 import SmartSchedule from './SmartSchedule'
 import StatsDashboard from './StatsDashboard'
 import MesocyclePlanner from './MesocyclePlanner'
@@ -19,8 +17,6 @@ import {
   Zap,
   StretchHorizontal,
   Timer,
-  Sparkles,
-  Sun,
   Clock,
   BarChart2,
   CalendarRange,
@@ -44,22 +40,8 @@ const sessionIcons: Record<string, LucideIcon> = {
 export default function Dashboard() {
   const recentSessions = useRecentSessions(5)
   const hasSessionToday = useHasSessionToday()
-  const [showWarmup, setShowWarmup] = useState(false)
-  const [warmupSessionType, setWarmupSessionType] = useState<Session['type']>('boulder')
-  const [showCooldown, setShowCooldown] = useState(false)
-  const [cooldownSessionType, setCooldownSessionType] = useState<Session['type']>('boulder')
   const [showMesocyclePlanner, setShowMesocyclePlanner] = useState(false)
   const activeMesocycle = useActiveMesocycle()
-
-  const handleQuickWarmup = (type: Session['type']) => {
-    setWarmupSessionType(type)
-    setShowWarmup(true)
-  }
-
-  const handleQuickCooldown = (type: Session['type']) => {
-    setCooldownSessionType(type)
-    setShowCooldown(true)
-  }
 
   // Get display label for session including boulder/cardio sub-type
   const getSessionDisplayLabel = (session: Session) => {
@@ -160,52 +142,6 @@ export default function Dashboard() {
         </div>
       </Accordion>
 
-      {/* Quick Warmup - Accordion */}
-      <Accordion
-        title="QUICK WARMUP"
-        icon={<Sun size={18} />}
-        defaultOpen={false}
-      >
-        <div className="grid grid-cols-4 gap-2">
-          {sessionTypes.map((type) => {
-            const Icon = sessionIcons[type.value]
-            return (
-              <button
-                key={type.value}
-                onClick={() => handleQuickWarmup(type.value)}
-                className="p-3 bg-rose-900/30 hover:bg-rose-800/40 rounded-xl transition-all flex flex-col items-center gap-1 border border-rose-700/20 group"
-              >
-                <Icon size={20} strokeWidth={1.5} className="text-rose-400 group-hover:text-rose-300" />
-                <span className="text-xs font-medium text-zinc-400 group-hover:text-zinc-300">{type.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </Accordion>
-
-      {/* Quick Cooldown - Accordion */}
-      <Accordion
-        title="QUICK COOLDOWN"
-        icon={<Sparkles size={18} />}
-        defaultOpen={false}
-      >
-        <div className="grid grid-cols-4 gap-2">
-          {sessionTypes.map((type) => {
-            const Icon = sessionIcons[type.value]
-            return (
-              <button
-                key={type.value}
-                onClick={() => handleQuickCooldown(type.value)}
-                className="p-3 bg-accent-900/30 hover:bg-accent-800/40 rounded-xl transition-all flex flex-col items-center gap-1 border border-accent-700/20 group"
-              >
-                <Icon size={20} strokeWidth={1.5} className="text-accent-400 group-hover:text-accent-300" />
-                <span className="text-xs font-medium text-zinc-400 group-hover:text-zinc-300">{type.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </Accordion>
-
       {/* Training Plan - Accordion */}
       <Accordion
         title="TRAINING PLAN"
@@ -247,28 +183,6 @@ export default function Dashboard() {
           <p className="text-zinc-500 text-sm text-center py-4">No sessions logged yet</p>
         )}
       </Accordion>
-
-      <Modal
-        isOpen={showWarmup}
-        onClose={() => setShowWarmup(false)}
-        title="AI Warmup"
-      >
-        <WarmupGenerator
-          sessionType={warmupSessionType}
-          onClose={() => setShowWarmup(false)}
-        />
-      </Modal>
-
-      <Modal
-        isOpen={showCooldown}
-        onClose={() => setShowCooldown(false)}
-        title="AI Cooldown"
-      >
-        <CooldownGenerator
-          sessionType={cooldownSessionType}
-          onClose={() => setShowCooldown(false)}
-        />
-      </Modal>
 
       <Modal
         isOpen={showMesocyclePlanner}
