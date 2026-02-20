@@ -362,7 +362,6 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     >
       {previewOption && previewOption.exercises && (
         <WorkoutPreview
-          title={previewOption.title}
           description={previewOption.description}
           exercises={previewOption.exercises.map(ex => ({
             name: ex.name,
@@ -379,7 +378,6 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
       )}
       {previewClimbingSession && previewClimbingSession.structure && (
         <WorkoutPreview
-          title={previewClimbingSession.title}
           description={previewClimbingSession.description}
           exercises={previewClimbingSession.structure.map(phase => ({
             name: phase.name,
@@ -415,7 +413,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
                 setViewState({ type: 'location_picker' })
               }
             }}
-            className="w-full mt-3 text-sm text-zinc-500 hover:text-zinc-300 py-2"
+            className="w-full mt-3 text-sm text-zinc-400 hover:text-zinc-200 py-2 border border-zinc-700/50 rounded-lg hover:border-zinc-600 transition-all"
           >
             Log another session
           </button>

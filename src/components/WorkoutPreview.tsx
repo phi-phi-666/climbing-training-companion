@@ -8,7 +8,6 @@ interface Exercise {
 }
 
 interface WorkoutPreviewProps {
-  title: string
   description?: string
   exercises: Exercise[]
   onClose: () => void
@@ -20,7 +19,6 @@ interface WorkoutPreviewProps {
 }
 
 export default function WorkoutPreview({
-  title,
   description,
   exercises: initialExercises,
   onClose,
@@ -194,7 +192,6 @@ export default function WorkoutPreview({
 
       {/* Header */}
       <div className="text-center">
-        <h3 className="font-semibold text-lg">{title}</h3>
         {description && (
           <p className="text-sm text-zinc-400 mt-1">{description}</p>
         )}
@@ -231,10 +228,10 @@ export default function WorkoutPreview({
           <button
             onClick={() => handleSwap(currentIndex)}
             disabled={swappingIndex !== null}
-            className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white/70 hover:text-white transition-all disabled:opacity-30"
+            className="absolute top-3 right-3 p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white/80 hover:text-white transition-all disabled:opacity-30"
             title="Swap exercise"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={14} className={swappingIndex === currentIndex ? 'animate-spin' : ''} />
           </button>
         )}
       </div>

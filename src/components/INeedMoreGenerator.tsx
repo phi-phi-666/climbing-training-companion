@@ -95,7 +95,6 @@ export default function INeedMoreGenerator({
   if (showPreview && result) {
     return (
       <WorkoutPreview
-        title={result.title}
         description={result.description}
         exercises={result.exercises}
         onClose={() => setShowPreview(false)}

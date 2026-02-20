@@ -99,7 +99,7 @@ export default function History() {
       {/* Summary bar */}
       <div className="flex items-center justify-between px-1">
         <span className="text-zinc-500 text-sm">Last 30 days</span>
-        <span className="text-zinc-400 text-sm font-medium">{sessions.length} sessions</span>
+        <span className="text-zinc-400 text-sm font-medium">{sessions.length} {sessions.length === 1 ? 'session' : 'sessions'}</span>
       </div>
 
       {sessions.length === 0 ? (

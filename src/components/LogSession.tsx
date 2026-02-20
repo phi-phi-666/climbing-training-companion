@@ -244,14 +244,27 @@ export default function LogSession() {
       // Try to match exercise names to available exercises
       const exerciseNames = prefill.exercises.map(e => e.name)
 
+      // Fuzzy match: substring match OR significant word overlap
+      const fuzzyMatch = (dbName: string, aiName: string) => {
+        const a = dbName.toLowerCase()
+        const b = aiName.toLowerCase()
+        // Substring match
+        if (a.includes(b) || b.includes(a)) return true
+        // Word overlap: match if 2+ significant words overlap
+        const aWords = a.split(/[\s-]+/).filter(w => w.length > 2)
+        const bWords = b.split(/[\s-]+/).filter(w => w.length > 2)
+        const overlap = aWords.filter(w => bWords.some(bw => bw.includes(w) || w.includes(bw)))
+        return overlap.length >= 2 || (overlap.length >= 1 && Math.max(aWords.length, bWords.length) <= 2)
+      }
+
       if (prefill.sessionType === 'mobility') {
         const matchedMobility = mobilityExercises.filter(e =>
-          exerciseNames.some(name => name.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(name.toLowerCase()))
+          exerciseNames.some(name => fuzzyMatch(e, name))
         )
         setSelectedMobilityExercises(matchedMobility)
       } else if (prefill.sessionType === 'hangboard') {
         const matchedHangboard = hangboardExercises.filter(e =>
-          exerciseNames.some(name => name.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(name.toLowerCase()))
+          exerciseNames.some(name => fuzzyMatch(e, name))
         )
         setSelectedHangboardExercises(matchedHangboard)
       } else if (['gym', 'crossfit', 'hiit'].includes(prefill.sessionType)) {
@@ -259,7 +272,7 @@ export default function LogSession() {
         const exerciseMap = prefill.sessionType === 'crossfit' ? crossfitExercisesByGroup : exercisesByGroup
         const allExercises = Object.values(exerciseMap).flat()
         const matchedExercises = allExercises.filter(e =>
-          exerciseNames.some(name => name.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(name.toLowerCase()))
+          exerciseNames.some(name => fuzzyMatch(e, name))
         )
         setSelectedExercises(matchedExercises)
       }
@@ -452,7 +465,7 @@ export default function LogSession() {
     <div className="space-y-3 pt-2">
       {/* Page header */}
       <h1 className="font-display text-xl tracking-wide text-center">
-        {prefill ? 'LOG SESSION' : 'LOG SESSION'}
+LOG SESSION
       </h1>
       {prefill && (
         <div className="text-center text-rose-400 text-sm -mt-1">
