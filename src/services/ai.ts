@@ -1101,7 +1101,7 @@ PERIODIZATION PRINCIPLES:
 - Specificity: align non-climbing days with the goal
 
 Session types to use (MUST be one of these):
-- boulder, lead, hangboard, gym, cardio, hiit, crossfit, mobility, core, rest
+- boulder, lead, hangboard, gym, cardio, hiit, crossfit, mobility, rest
 
 For each day of the week (Mon-Sun), specify:
 - sessionType: one of the types above

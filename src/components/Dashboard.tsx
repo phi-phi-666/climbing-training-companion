@@ -33,8 +33,7 @@ const sessionIcons: Record<string, LucideIcon> = {
   cardio: Footprints,
   hiit: Flame,
   crossfit: Zap,
-  mobility: StretchHorizontal,
-  core: Dumbbell
+  mobility: StretchHorizontal
 }
 
 export default function Dashboard() {
@@ -102,7 +101,7 @@ export default function Dashboard() {
             const SessionIcon = ({
               boulder: Mountain, lead: Mountain, hangboard: Hand, gym: Dumbbell,
               cardio: Footprints, hiit: Flame, crossfit: Zap, mobility: StretchHorizontal,
-              core: Dumbbell, rest: Coffee
+              rest: Coffee
             } as Record<string, LucideIcon>)[todayPlan.sessionType] || Dumbbell
             return (
               <div className="mt-2 flex items-center gap-2 text-xs text-zinc-400">

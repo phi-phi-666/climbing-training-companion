@@ -20,8 +20,7 @@ const sessionIcons: Record<string, LucideIcon> = {
   cardio: Footprints,
   hiit: Flame,
   crossfit: Zap,
-  mobility: StretchHorizontal,
-  core: Dumbbell
+  mobility: StretchHorizontal
 }
 
 const typeColors: Record<string, string> = {
@@ -32,8 +31,7 @@ const typeColors: Record<string, string> = {
   cardio: 'bg-green-500',
   hiit: 'bg-orange-500',
   crossfit: 'bg-red-500',
-  mobility: 'bg-teal-500',
-  core: 'bg-blue-500'
+  mobility: 'bg-teal-500'
 }
 
 type Period = '7d' | '30d' | '90d'

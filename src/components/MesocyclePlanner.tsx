@@ -61,7 +61,6 @@ const sessionTypeIcons: Record<string, LucideIcon> = {
   hiit: Flame,
   crossfit: Zap,
   mobility: StretchHorizontal,
-  core: Dumbbell,
   rest: Coffee
 }
 
@@ -81,7 +80,8 @@ export default function MesocyclePlanner({ onClose }: MesocyclePlannerProps) {
   const allMesocycles = useAllMesocycles()
   const lastSessions = useSessionHistory(7)
 
-  const [view, setView] = useState<'list' | 'create' | 'preview'>('list')
+  const hasAnyMesocycles = allMesocycles.length > 0
+  const [view, setView] = useState<'list' | 'create' | 'preview'>(hasAnyMesocycles ? 'list' : 'create')
   const [selectedGoal, setSelectedGoal] = useState<MesocycleGoal>('general')
   const [selectedWeeks, setSelectedWeeks] = useState(4)
   const [loading, setLoading] = useState(false)
@@ -152,42 +152,44 @@ export default function MesocyclePlanner({ onClose }: MesocyclePlannerProps) {
   // Create view
   if (view === 'create') {
     return (
-      <div className="space-y-4">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Goal</div>
-        <div className="grid grid-cols-2 gap-2">
+      <div className="space-y-3">
+        <div className="text-[10px] uppercase tracking-wider text-zinc-500">Goal</div>
+        <div className="flex gap-1.5">
           {goalOptions.map((goal) => {
             const Icon = goal.icon
             return (
               <button
                 key={goal.value}
                 onClick={() => setSelectedGoal(goal.value)}
-                className={`p-3 rounded-xl text-left transition-all border ${
+                className={`flex-1 p-2.5 rounded-xl text-center transition-all border ${
                   selectedGoal === goal.value
                     ? 'bg-rose-600 text-white border-rose-500'
                     : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border-violet-900/20'
                 }`}
               >
-                <Icon size={18} className="mb-1" />
-                <div className="font-medium text-sm">{goal.label}</div>
-                <div className="text-[10px] opacity-70">{goal.description}</div>
+                <Icon size={16} className="mx-auto mb-1" />
+                <div className="font-medium text-[11px]">{goal.label}</div>
               </button>
             )
           })}
         </div>
+        <div className="text-[10px] text-zinc-500 text-center">
+          {goalOptions.find(g => g.value === selectedGoal)?.description}
+        </div>
 
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Duration</div>
+        <div className="text-[10px] uppercase tracking-wider text-zinc-500">Duration</div>
         <div className="flex gap-2">
           {weekOptions.map((weeks) => (
             <button
               key={weeks}
               onClick={() => setSelectedWeeks(weeks)}
-              className={`flex-1 py-3 rounded-xl text-center font-medium transition-all border ${
+              className={`flex-1 py-2.5 rounded-xl text-center text-sm font-medium transition-all border ${
                 selectedWeeks === weeks
                   ? 'bg-rose-600 text-white border-rose-500'
                   : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border-violet-900/20'
               }`}
             >
-              {weeks} weeks
+              {weeks}w
             </button>
           ))}
         </div>
@@ -201,7 +203,7 @@ export default function MesocyclePlanner({ onClose }: MesocyclePlannerProps) {
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="w-full btn-primary py-4 font-semibold flex items-center justify-center gap-2"
+          className="w-full btn-primary py-3 font-semibold flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
@@ -216,12 +218,14 @@ export default function MesocyclePlanner({ onClose }: MesocyclePlannerProps) {
           )}
         </button>
 
-        <button
-          onClick={() => setView('list')}
-          className="w-full text-sm text-zinc-500 hover:text-zinc-300"
-        >
-          Cancel
-        </button>
+        {hasAnyMesocycles && (
+          <button
+            onClick={() => setView('list')}
+            className="w-full text-sm text-zinc-500 hover:text-zinc-300"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     )
   }

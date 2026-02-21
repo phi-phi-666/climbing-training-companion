@@ -61,7 +61,6 @@ const sessionIcons: Record<string, LucideIcon> = {
   hiit: Flame,
   crossfit: Zap,
   mobility: StretchHorizontal,
-  core: Dumbbell,
   rest: Coffee
 }
 
@@ -201,7 +200,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
 
   // Generate warmup and cooldown for a session
   const generateWarmupAndCooldown = async (
-    sessionType: 'boulder' | 'lead' | 'hangboard' | 'gym' | 'cardio' | 'hiit' | 'crossfit' | 'mobility' | 'core',
+    sessionType: 'boulder' | 'lead' | 'hangboard' | 'gym' | 'cardio' | 'hiit' | 'crossfit' | 'mobility',
     durationMinutes: number,
     boulderSubType?: string
   ) => {
