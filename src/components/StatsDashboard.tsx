@@ -94,7 +94,7 @@ export default function StatsDashboard() {
         pct: Math.round((count / totalSessions) * 100)
       }))
 
-    // Weekly volume (last 7 days)
+    // Weekly volume (last 7 days) with dominant session type
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     const weeklyVolume = days.map((day, i) => {
       const d = new Date(today)
@@ -102,9 +102,16 @@ export default function StatsDashboard() {
       d.setDate(d.getDate() - todayDay + i)
       const dateStr = d.toISOString().split('T')[0]
       const daySessions = sessions.filter(s => s.date === dateStr)
+      // Find dominant session type for this day
+      const dayTypeCounts: Record<string, number> = {}
+      for (const s of daySessions) {
+        dayTypeCounts[s.type] = (dayTypeCounts[s.type] || 0) + 1
+      }
+      const dominantType = Object.entries(dayTypeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null
       return {
         day,
-        minutes: daySessions.reduce((sum, s) => sum + s.durationMinutes, 0)
+        minutes: daySessions.reduce((sum, s) => sum + s.durationMinutes, 0),
+        type: dominantType
       }
     })
     const maxMinutes = Math.max(...weeklyVolume.map(d => d.minutes), 1)
@@ -209,16 +216,22 @@ export default function StatsDashboard() {
       {/* Weekly volume chart */}
       <div>
         <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">This Week</div>
-        <div className="flex items-end gap-1 h-16">
-          {stats.weeklyVolume.map(({ day, minutes }) => (
-            <div key={day} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className="w-full rounded-t bg-gradient-to-t from-rose-600 to-rose-400 transition-all min-h-[2px]"
-                style={{ height: `${(minutes / stats.maxMinutes) * 100}%` }}
-              />
-              <span className="text-[9px] text-zinc-600">{day}</span>
-            </div>
-          ))}
+        <div className="flex gap-1" style={{ height: '4.5rem' }}>
+          {stats.weeklyVolume.map(({ day, minutes, type }) => {
+            const barColor = type && typeColors[type] ? typeColors[type] : 'bg-zinc-700'
+            const heightPct = minutes > 0 ? Math.max((minutes / stats.maxMinutes) * 100, 8) : 0
+            return (
+              <div key={day} className="flex-1 flex flex-col items-center">
+                <div className="flex-1 w-full flex items-end">
+                  <div
+                    className={`w-full rounded-t ${barColor} transition-all`}
+                    style={{ height: minutes > 0 ? `${heightPct}%` : '2px' }}
+                  />
+                </div>
+                <span className="text-[9px] text-zinc-600 mt-1">{day}</span>
+              </div>
+            )
+          })}
         </div>
       </div>
 

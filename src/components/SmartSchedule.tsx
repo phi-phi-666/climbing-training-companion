@@ -337,8 +337,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
 
   const handleClosePreview = () => {
     setShowPreview(false)
-    setGeneratedWarmup(null)
-    setGeneratedCooldown(null)
+    // Keep warmup/cooldown so user can resume without regenerating
   }
 
   const handleSwapExercise = async (index: number, exercise: { name: string; sets?: number; reps?: string }) => {
@@ -381,7 +380,8 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           description={previewClimbingSession.description}
           exercises={previewClimbingSession.structure.map(phase => ({
             name: phase.name,
-            reps: phase.duration
+            reps: phase.duration,
+            description: phase.details
           }))}
           onClose={handleClosePreview}
           onComplete={handlePreviewComplete}
@@ -389,6 +389,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
           cooldown={generatedCooldown}
           generatingWarmupCooldown={generatingWarmupCooldown}
           onSwapExercise={handleSwapExercise}
+          isClimbingSession
         />
       )}
     </Modal>

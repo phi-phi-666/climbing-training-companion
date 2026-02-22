@@ -234,9 +234,11 @@ Requirements:
 - Consider what muscles need most prep for this specific session type
 - Each exercise duration should add up to approximately ${durationMinutes} minutes total
 
+BILATERAL EXERCISES: For any exercise done one side at a time (e.g., lunges, single-leg work, arm stretches), ALWAYS specify "each side" in the duration (e.g., "Leg swings (30 sec each side)").
+
 IMPORTANT: Return plain text only. No markdown formatting, no headers, no bold text, no asterisks. Just numbered lines like:
 1. Exercise name (2 min)
-2. Another exercise (1.5 min)
+2. Another exercise (1.5 min each side)
 
 Be creative and specific. Don't be generic. Surprise me with the combination.
 Return only the warmup routine, no preamble or explanation.`
@@ -307,6 +309,8 @@ Requirements:
 - Format as a simple numbered list with duration per item
 - Keep descriptions concise (one line each)
 - Each stretch duration should add up to approximately ${durationMinutes} minutes total
+
+BILATERAL EXERCISES: For any stretch or exercise done one side at a time (e.g., pigeon pose, hip flexor stretch, shoulder stretch), ALWAYS specify "each side" in the duration (e.g., "Pigeon pose (45 sec each side)").
 
 IMPORTANT: Return plain text only. No markdown formatting, no headers, no bold text, no asterisks, no special characters. Just simple numbered lines like:
 1. Stretch name (30 sec each side)

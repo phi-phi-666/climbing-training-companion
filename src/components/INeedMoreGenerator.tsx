@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { generateINeedMore, buildAIContext, type INeedMoreResult, type WorkoutType } from '../services/ai'
 import { useSessionHistory } from '../hooks/useSessionHistory'
 import type { SessionType, BoulderSubType } from '../data/exercises'
@@ -7,11 +7,19 @@ import WorkoutPreview from './WorkoutPreview'
 
 type Duration = 15 | 30 | 45
 
+export interface SavedINeedMoreState {
+  result: INeedMoreResult
+  selectedTypes: WorkoutType[]
+  duration: Duration
+}
+
 interface INeedMoreGeneratorProps {
   sessionType: SessionType
   boulderSubType?: BoulderSubType
   onClose: () => void
   onWorkoutGenerated?: (notesText: string) => void
+  savedState?: SavedINeedMoreState | null
+  onStateChange?: (state: SavedINeedMoreState | null) => void
 }
 
 const WORKOUT_OPTIONS: { value: WorkoutType; label: string; description: string }[] = [
@@ -24,12 +32,15 @@ export default function INeedMoreGenerator({
   sessionType,
   boulderSubType,
   onClose,
-  onWorkoutGenerated
+  onWorkoutGenerated,
+  savedState,
+  onStateChange
 }: INeedMoreGeneratorProps) {
   const lastSessions = useSessionHistory(7)
 
   // Multi-select for workout types
   const [selectedTypes, setSelectedTypes] = useState<WorkoutType[]>(() => {
+    if (savedState) return savedState.selectedTypes
     // Smart defaults: after climbing, default to antagonist + core
     if (sessionType === 'boulder' || sessionType === 'lead' || sessionType === 'hangboard') {
       return ['antagonist', 'core']
@@ -37,11 +48,18 @@ export default function INeedMoreGenerator({
     return ['core']
   })
 
-  const [duration, setDuration] = useState<Duration>(15)
-  const [result, setResult] = useState<INeedMoreResult | null>(null)
+  const [duration, setDuration] = useState<Duration>(savedState?.duration ?? 15)
+  const [result, setResult] = useState<INeedMoreResult | null>(savedState?.result ?? null)
   const [showPreview, setShowPreview] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Persist state changes to parent
+  useEffect(() => {
+    if (result) {
+      onStateChange?.({ result, selectedTypes, duration })
+    }
+  }, [result, selectedTypes, duration])
 
   // Check if this is a climbing session (for supplementary warning)
   const isClimbingSession = sessionType === 'boulder' || sessionType === 'lead' || sessionType === 'hangboard'

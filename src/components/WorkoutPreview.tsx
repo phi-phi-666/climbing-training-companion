@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Check, RotateCcw, Loader2, Sparkles, StretchHorizontal, RefreshCw, Timer } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { ChevronLeft, ChevronRight, Check, RotateCcw, Loader2, Sparkles, StretchHorizontal, RefreshCw, Timer, Play, Pause, RotateCcw as Reset } from 'lucide-react'
 import WorkoutTimer from './WorkoutTimer'
 import { useExerciseHistoryBatch } from '../hooks/useSessionHistory'
 
@@ -8,6 +8,7 @@ interface Exercise {
   sets?: number
   reps?: string
   supersetGroup?: number
+  description?: string
 }
 
 interface ExerciseBlock {
@@ -25,6 +26,68 @@ interface WorkoutPreviewProps {
   cooldown?: string | null
   generatingWarmupCooldown?: boolean
   onSwapExercise?: (index: number, exercise: Exercise) => Promise<Exercise>
+  isClimbingSession?: boolean
+}
+
+// Parse duration string like "10 min", "30 sec", "2 min" into seconds
+function parseDurationToSeconds(reps?: string): number | null {
+  if (!reps) return null
+  const minMatch = reps.match(/(\d+)\s*min/i)
+  const secMatch = reps.match(/(\d+)\s*sec/i)
+  if (minMatch) return parseInt(minMatch[1]) * 60
+  if (secMatch) return parseInt(secMatch[1])
+  return null
+}
+
+function ExerciseTimer({ totalSeconds }: { totalSeconds: number }) {
+  const [remaining, setRemaining] = useState(totalSeconds)
+  const [running, setRunning] = useState(false)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (running && remaining > 0) {
+      intervalRef.current = setInterval(() => {
+        setRemaining(prev => {
+          if (prev <= 1) {
+            setRunning(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [running, remaining])
+
+  const mins = Math.floor(remaining / 60)
+  const secs = remaining % 60
+  const pct = ((totalSeconds - remaining) / totalSeconds) * 100
+
+  return (
+    <div className="mt-2 bg-black/20 rounded-xl p-3 space-y-2">
+      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className="h-full bg-rose-400 transition-all duration-1000 rounded-full" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex items-center justify-center gap-3">
+        <button
+          onClick={() => { setRemaining(totalSeconds); setRunning(false) }}
+          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20"
+        >
+          <Reset size={14} />
+        </button>
+        <div className="text-2xl font-mono font-bold min-w-[5rem] text-center">
+          {mins}:{secs.toString().padStart(2, '0')}
+        </div>
+        <button
+          onClick={() => setRunning(!running)}
+          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20"
+        >
+          {running ? <Pause size={14} /> : <Play size={14} />}
+        </button>
+      </div>
+      {remaining === 0 && <div className="text-center text-xs text-green-400 font-medium">Done!</div>}
+    </div>
+  )
 }
 
 export default function WorkoutPreview({
@@ -35,7 +98,8 @@ export default function WorkoutPreview({
   warmup,
   cooldown,
   generatingWarmupCooldown,
-  onSwapExercise
+  onSwapExercise,
+  isClimbingSession
 }: WorkoutPreviewProps) {
   const [exercises, setExercises] = useState(initialExercises)
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0)
@@ -46,6 +110,7 @@ export default function WorkoutPreview({
   const [activeTimer, setActiveTimer] = useState<'warmup' | 'cooldown' | null>(null)
   const [exerciseActuals, setExerciseActuals] = useState<Map<number, { weight?: number; reps: number[] }>>(new Map())
   const [showLogInput, setShowLogInput] = useState(false)
+  const [showExerciseTimer, setShowExerciseTimer] = useState(false)
 
   const exerciseNames = useMemo(() => exercises.map(e => e.name), [exercises])
   const exerciseHistory = useExerciseHistoryBatch(exerciseNames)
@@ -90,6 +155,8 @@ export default function WorkoutPreview({
 
   const handleNext = () => {
     setCompletedBlocks(prev => new Set(prev).add(currentBlockIndex))
+    setShowExerciseTimer(false)
+    setShowLogInput(false)
 
     if (currentBlockIndex < blocks.length - 1) {
       setCurrentBlockIndex(prev => prev + 1)
@@ -98,6 +165,8 @@ export default function WorkoutPreview({
 
   const handlePrevious = () => {
     if (currentBlockIndex > 0) {
+      setShowExerciseTimer(false)
+      setShowLogInput(false)
       setCurrentBlockIndex(prev => prev - 1)
     }
   }
@@ -323,20 +392,25 @@ export default function WorkoutPreview({
       {currentBlock && currentBlock.type === 'single' ? (
         <div className="p-6 rounded-2xl text-center bg-gradient-to-br from-rose-600 to-rose-700 relative">
           <div className="text-sm uppercase tracking-wider opacity-70 mb-1">Current</div>
-          <div className="text-xl font-semibold mb-3 px-2 min-h-[3.5rem] flex items-center justify-center">
+          <div className="text-xl font-semibold mb-2 px-2 min-h-[3.5rem] flex items-center justify-center">
             {swappingIndex === currentBlock.originalIndices[0] ? (
               <Loader2 size={24} className="animate-spin opacity-70" />
             ) : (
               currentBlock.exercises[0]?.name
             )}
           </div>
+          {currentBlock.exercises[0]?.description && (
+            <div className="text-sm opacity-80 mb-2 px-2 leading-relaxed">
+              {currentBlock.exercises[0].description}
+            </div>
+          )}
           {(currentBlock.exercises[0]?.sets || currentBlock.exercises[0]?.reps) && (
             <div className="text-lg font-mono opacity-90">
               {currentBlock.exercises[0].sets && `${currentBlock.exercises[0].sets}×`}
               {currentBlock.exercises[0].reps || ''}
             </div>
           )}
-          {(() => {
+          {!isClimbingSession && (() => {
             const hist = exerciseHistory.get(currentBlock.exercises[0]?.name)
             return hist ? (
               <div className="text-xs opacity-60 mt-2">
@@ -347,58 +421,78 @@ export default function WorkoutPreview({
               <div className="text-xs opacity-50 mt-2">First time!</div>
             )
           })()}
-          {/* Log weight/reps toggle */}
-          <button
-            onClick={() => setShowLogInput(!showLogInput)}
-            className="mt-3 text-[10px] uppercase tracking-wider bg-white/15 hover:bg-white/25 px-3 py-1 rounded-lg transition-all"
-          >
-            {showLogInput ? 'Hide' : 'Log weight/reps'}
-          </button>
-          {showLogInput && (() => {
-            const exIdx = currentBlock.originalIndices[0]
-            const actual = exerciseActuals.get(exIdx) || { reps: [] }
-            const numSets = currentBlock.exercises[0]?.sets || 3
-            const hist = exerciseHistory.get(currentBlock.exercises[0]?.name)
-            const weightDiff = actual.weight && hist?.lastWeight
-              ? actual.weight - hist.lastWeight : null
-            return (
-              <div className="mt-3 bg-black/20 rounded-xl p-3 text-left space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-wider opacity-70 w-12">Weight</span>
-                  <button
-                    onClick={() => updateActualWeight(exIdx, (actual.weight || 0) - 2.5)}
-                    className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center font-bold"
-                  >-</button>
-                  <span className="text-lg font-mono w-16 text-center">{actual.weight || 0}<span className="text-xs opacity-70">kg</span></span>
-                  <button
-                    onClick={() => updateActualWeight(exIdx, (actual.weight || 0) + 2.5)}
-                    className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center font-bold"
-                  >+</button>
-                  {weightDiff !== null && weightDiff !== 0 && (
-                    <span className={`text-xs font-medium ${weightDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {weightDiff > 0 ? '+' : ''}{weightDiff}kg
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-wider opacity-70 w-12">Reps</span>
-                  <div className="flex gap-1">
-                    {Array.from({ length: numSets }, (_, s) => (
-                      <input
-                        key={s}
-                        type="number"
-                        inputMode="numeric"
-                        value={actual.reps[s] || ''}
-                        onChange={(e) => updateActualRep(exIdx, s, parseInt(e.target.value) || 0)}
-                        placeholder={`S${s + 1}`}
-                        className="w-12 h-8 rounded-lg bg-white/10 text-center text-sm font-mono border-none outline-none focus:bg-white/20"
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
+          {/* Timer for timed exercises */}
+          {(() => {
+            const timerSecs = parseDurationToSeconds(currentBlock.exercises[0]?.reps)
+            if (!timerSecs) return null
+            return showExerciseTimer ? (
+              <ExerciseTimer totalSeconds={timerSecs} />
+            ) : (
+              <button
+                onClick={() => setShowExerciseTimer(true)}
+                className="mt-3 text-[10px] uppercase tracking-wider bg-white/15 hover:bg-white/25 px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 mx-auto"
+              >
+                <Timer size={12} />
+                Start Timer
+              </button>
             )
           })()}
+          {/* Log weight/reps toggle - only for non-climbing sessions */}
+          {!isClimbingSession && (
+            <>
+              <button
+                onClick={() => setShowLogInput(!showLogInput)}
+                className="mt-3 text-[10px] uppercase tracking-wider bg-white/15 hover:bg-white/25 px-3 py-1 rounded-lg transition-all"
+              >
+                {showLogInput ? 'Hide' : 'Log weight/reps'}
+              </button>
+              {showLogInput && (() => {
+                const exIdx = currentBlock.originalIndices[0]
+                const actual = exerciseActuals.get(exIdx) || { reps: [] }
+                const numSets = currentBlock.exercises[0]?.sets || 3
+                const hist = exerciseHistory.get(currentBlock.exercises[0]?.name)
+                const weightDiff = actual.weight && hist?.lastWeight
+                  ? actual.weight - hist.lastWeight : null
+                return (
+                  <div className="mt-3 bg-black/20 rounded-xl p-3 text-left space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-wider opacity-70 w-12">Weight</span>
+                      <button
+                        onClick={() => updateActualWeight(exIdx, (actual.weight || 0) - 2.5)}
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center font-bold"
+                      >-</button>
+                      <span className="text-lg font-mono w-16 text-center">{actual.weight || 0}<span className="text-xs opacity-70">kg</span></span>
+                      <button
+                        onClick={() => updateActualWeight(exIdx, (actual.weight || 0) + 2.5)}
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center font-bold"
+                      >+</button>
+                      {weightDiff !== null && weightDiff !== 0 && (
+                        <span className={`text-xs font-medium ${weightDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {weightDiff > 0 ? '+' : ''}{weightDiff}kg
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-wider opacity-70 w-12">Reps</span>
+                      <div className="flex gap-1">
+                        {Array.from({ length: numSets }, (_, s) => (
+                          <input
+                            key={s}
+                            type="number"
+                            inputMode="numeric"
+                            value={actual.reps[s] || ''}
+                            onChange={(e) => updateActualRep(exIdx, s, parseInt(e.target.value) || 0)}
+                            placeholder={`S${s + 1}`}
+                            className="w-12 h-8 rounded-lg bg-white/10 text-center text-sm font-mono border-none outline-none focus:bg-white/20"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </>
+          )}
           {onSwapExercise && (
             <button
               onClick={() => handleSwap(currentBlock.originalIndices[0])}
@@ -419,33 +513,63 @@ export default function WorkoutPreview({
             <span className="text-xs opacity-70">{currentBlock.exercises.length} exercises</span>
           </div>
           <div className="px-4 pb-4 space-y-2">
-            {currentBlock.exercises.map((ex, i) => (
-              <div key={i} className="bg-black/15 rounded-xl p-3 flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm">
-                    {swappingIndex === currentBlock.originalIndices[i] ? (
-                      <Loader2 size={16} className="animate-spin inline opacity-70" />
-                    ) : (
-                      ex.name
+            {currentBlock.exercises.map((ex, i) => {
+              const exIdx = currentBlock.originalIndices[i]
+              const actual = exerciseActuals.get(exIdx) || { reps: [] }
+              const timerSecs = parseDurationToSeconds(ex.reps)
+              return (
+                <div key={i} className="bg-black/15 rounded-xl p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm">
+                        {swappingIndex === exIdx ? (
+                          <Loader2 size={16} className="animate-spin inline opacity-70" />
+                        ) : (
+                          ex.name
+                        )}
+                      </div>
+                      {(ex.sets || ex.reps) && (
+                        <div className="text-xs font-mono opacity-80 mt-0.5">
+                          {ex.sets && `${ex.sets}×`}{ex.reps || ''}
+                        </div>
+                      )}
+                      {ex.description && (
+                        <div className="text-xs opacity-70 mt-1">{ex.description}</div>
+                      )}
+                    </div>
+                    {onSwapExercise && (
+                      <button
+                        onClick={() => handleSwap(exIdx)}
+                        disabled={swappingIndex !== null}
+                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all disabled:opacity-30 ml-2"
+                      >
+                        <RefreshCw size={12} className={swappingIndex === exIdx ? 'animate-spin' : ''} />
+                      </button>
                     )}
                   </div>
-                  {(ex.sets || ex.reps) && (
-                    <div className="text-xs font-mono opacity-80 mt-0.5">
-                      {ex.sets && `${ex.sets}×`}{ex.reps || ''}
+                  {/* Weight logging for superset exercises (non-climbing only) */}
+                  {!isClimbingSession && ex.sets && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        onClick={() => updateActualWeight(exIdx, (actual.weight || 0) - 2.5)}
+                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold"
+                      >-</button>
+                      <span className="text-sm font-mono w-14 text-center">{actual.weight || 0}<span className="text-[10px] opacity-70">kg</span></span>
+                      <button
+                        onClick={() => updateActualWeight(exIdx, (actual.weight || 0) + 2.5)}
+                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold"
+                      >+</button>
+                    </div>
+                  )}
+                  {/* Timer for timed superset exercises */}
+                  {timerSecs && (
+                    <div className="mt-2">
+                      <ExerciseTimer totalSeconds={timerSecs} />
                     </div>
                   )}
                 </div>
-                {onSwapExercise && (
-                  <button
-                    onClick={() => handleSwap(currentBlock.originalIndices[i])}
-                    disabled={swappingIndex !== null}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all disabled:opacity-30 ml-2"
-                  >
-                    <RefreshCw size={12} className={swappingIndex === currentBlock.originalIndices[i] ? 'animate-spin' : ''} />
-                  </button>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

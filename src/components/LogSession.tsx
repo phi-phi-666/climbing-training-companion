@@ -21,7 +21,7 @@ import Modal from './ui/Modal'
 import Accordion from './ui/Accordion'
 import WarmupGenerator from './WarmupGenerator'
 import CooldownGenerator from './CooldownGenerator'
-import INeedMoreGenerator from './INeedMoreGenerator'
+import INeedMoreGenerator, { type SavedINeedMoreState } from './INeedMoreGenerator'
 import { useToast } from './ui/Toast'
 import { useActiveMesocycle } from '../hooks/useMesocycle'
 import type { TodayOption } from '../services/ai'
@@ -191,6 +191,7 @@ export default function LogSession() {
   const [perceivedExertion, setPerceivedExertion] = useState<number | null>(savedState?.perceivedExertion ?? null)
   const [fatigueLevel, setFatigueLevel] = useState<number | null>(savedState?.fatigueLevel ?? null)
   const [supplementary, setSupplementary] = useState<string | null>(null)
+  const [savedINeedMore, setSavedINeedMore] = useState<SavedINeedMoreState | null>(null)
   const [saving, setSaving] = useState(false)
   const [showWarmup, setShowWarmup] = useState(false)
   const [showCooldown, setShowCooldown] = useState(false)
@@ -243,11 +244,11 @@ export default function LogSession() {
       }
       setNotes(fullNotes)
 
-      // Set warmup/cooldown from prefill (from SmartSchedule)
-      if (prefill.warmup) {
+      // Set warmup/cooldown from prefill (from SmartSchedule) - only if not already set
+      if (prefill.warmup && !warmup) {
         setWarmup(prefill.warmup)
       }
-      if (prefill.cooldown) {
+      if (prefill.cooldown && !cooldown) {
         setCooldown(prefill.cooldown)
       }
 
@@ -837,7 +838,7 @@ LOG SESSION
           <div>
             <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5">
               <Gauge size={10} />
-              RPE (perceived exertion)
+              How hard was it?
             </div>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rpe) => (
@@ -936,7 +937,10 @@ LOG SESSION
           onCooldownGenerated={handleCooldownGenerated}
           savedCooldown={cooldown}
           muscleGroups={selectedGroups}
-          exercises={selectedExercises}
+          exercises={[
+            ...selectedExercises,
+            ...(savedINeedMore?.result.exercises.map(e => e.name) || [])
+          ]}
         />
       </Modal>
 
@@ -951,6 +955,8 @@ LOG SESSION
           boulderSubType={sessionType === 'boulder' ? boulderSubType : undefined}
           onClose={() => setShowSupplementary(false)}
           onWorkoutGenerated={handleINeedMoreGenerated}
+          savedState={savedINeedMore}
+          onStateChange={setSavedINeedMore}
         />
       </Modal>
 
