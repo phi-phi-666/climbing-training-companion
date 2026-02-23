@@ -52,6 +52,7 @@ function getDateRange(period: Period): { start: string; end: string } {
 
 export default function StatsDashboard() {
   const [period, setPeriod] = useState<Period>('30d')
+  const [selectedHeatmapDate, setSelectedHeatmapDate] = useState<string | null>(null)
   const { start, end } = getDateRange(period)
   const sessions = useSessionsByDateRange(start, end)
 
@@ -116,9 +117,10 @@ export default function StatsDashboard() {
     })
     const maxMinutes = Math.max(...weeklyVolume.map(d => d.minutes), 1)
 
-    // Training heatmap (last 30 days)
+    // Training heatmap (matches selected period)
+    const periodDays = period === '7d' ? 7 : period === '90d' ? 90 : 30
     const heatmap: { date: string; count: number }[] = []
-    for (let i = 29; i >= 0; i--) {
+    for (let i = periodDays - 1; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
       const dateStr = d.toISOString().split('T')[0]
@@ -156,7 +158,7 @@ export default function StatsDashboard() {
         {([['7d', 'Week'], ['30d', 'Month'], ['90d', '90 Days']] as [Period, string][]).map(([p, label]) => (
           <button
             key={p}
-            onClick={() => setPeriod(p)}
+            onClick={() => { setPeriod(p); setSelectedHeatmapDate(null) }}
             className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
               period === p
                 ? 'bg-rose-500 text-white'
@@ -235,19 +237,37 @@ export default function StatsDashboard() {
         </div>
       </div>
 
-      {/* 30-day heatmap */}
+      {/* Activity heatmap */}
       <div>
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Last 30 Days</div>
-        <div className="grid grid-cols-10 gap-1">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+            Last {period === '7d' ? '7' : period === '90d' ? '90' : '30'} Days
+          </span>
+          {selectedHeatmapDate && (() => {
+            const entry = stats.heatmap.find(h => h.date === selectedHeatmapDate)
+            if (!entry) return null
+            const d = new Date(entry.date + 'T12:00:00')
+            const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            return (
+              <span className="text-[10px] text-zinc-400">
+                {label}: {entry.count} session{entry.count !== 1 ? 's' : ''}
+              </span>
+            )
+          })()}
+        </div>
+        <div
+          className="grid gap-1"
+          style={{ gridTemplateColumns: `repeat(${period === '7d' ? 7 : period === '90d' ? 15 : 10}, minmax(0, 1fr))` }}
+        >
           {stats.heatmap.map(({ date, count }) => (
             <div
               key={date}
-              className={`aspect-square rounded-sm ${
+              onClick={() => setSelectedHeatmapDate(prev => prev === date ? null : date)}
+              className={`aspect-square rounded-sm cursor-pointer transition-all ${
                 count === 0 ? 'bg-void-100'
-                : count === 1 ? 'bg-rose-500/30'
-                : 'bg-rose-500/60'
-              }`}
-              title={`${date}: ${count} session${count !== 1 ? 's' : ''}`}
+                : count === 1 ? 'bg-sky-500/30'
+                : 'bg-sky-500/60'
+              } ${selectedHeatmapDate === date ? 'ring-1 ring-sky-400' : ''}`}
             />
           ))}
         </div>
