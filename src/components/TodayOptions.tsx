@@ -7,6 +7,7 @@ import {
   type DaysSinceByType
 } from '../services/ai'
 import { useSessionHistory } from '../hooks/useSessionHistory'
+import { todayStr } from '../services/date'
 import { sessionTypes } from '../data/exercises'
 import {
   Mountain,
@@ -56,7 +57,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
         const parsed = JSON.parse(stored)
         // Check if stored option is from today
         const storedDate = parsed._storedDate
-        const today = new Date().toISOString().split('T')[0]
+        const today = todayStr()
         if (storedDate === today) {
           delete parsed._storedDate
           return parsed
@@ -79,7 +80,7 @@ export default function TodayOptions({ daysSince, hasSessionToday }: TodayOption
     if (selectedOption) {
       const toStore = {
         ...selectedOption,
-        _storedDate: new Date().toISOString().split('T')[0]
+        _storedDate: todayStr()
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore))
     } else {

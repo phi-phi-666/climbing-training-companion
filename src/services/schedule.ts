@@ -1,5 +1,6 @@
 // Training schedule configuration
 // Stores user's climbing schedule and location-based workout preferences
+import { localDateStr } from './date'
 
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6 // Sunday = 0, Monday = 1, etc.
 
@@ -53,7 +54,7 @@ export function getScheduleConfig(): ScheduleConfig {
       // Clean up old overrides (more than 7 days ago)
       const weekAgo = new Date()
       weekAgo.setDate(weekAgo.getDate() - 7)
-      const weekAgoStr = weekAgo.toISOString().split('T')[0]
+      const weekAgoStr = localDateStr(weekAgo)
       parsed.overrides = (parsed.overrides || []).filter(
         (o: { date: string }) => o.date >= weekAgoStr
       )
@@ -89,7 +90,7 @@ export function removeScheduleOverride(date: string): void {
 
 export function isClimbingDay(date: Date = new Date()): boolean {
   const config = getScheduleConfig()
-  const dateStr = date.toISOString().split('T')[0]
+  const dateStr = localDateStr(date)
 
   // Check for overrides first
   const override = config.overrides.find(o => o.date === dateStr)
@@ -105,7 +106,7 @@ export function isClimbingDay(date: Date = new Date()): boolean {
 
 export function getClimbingTypeForDay(date: Date = new Date()): ClimbingType | null {
   const config = getScheduleConfig()
-  const dateStr = date.toISOString().split('T')[0]
+  const dateStr = localDateStr(date)
 
   // Check for overrides first
   const override = config.overrides.find(o => o.date === dateStr)

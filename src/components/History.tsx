@@ -1,5 +1,6 @@
 import { useSessionHistory, deleteSession, updateSession, type Session } from '../hooks/useSessionHistory'
 import { sessionTypes, boulderSubTypes, cardioSubTypes } from '../data/exercises'
+import { localDateStr } from '../services/date'
 import { useState } from 'react'
 import {
   Mountain,
@@ -36,7 +37,7 @@ function getDateOptions(): { value: string; label: string }[] {
   for (let i = 0; i < 14; i++) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
-    const value = date.toISOString().split('T')[0]
+    const value = localDateStr(date)
 
     let label: string
     if (i === 0) {

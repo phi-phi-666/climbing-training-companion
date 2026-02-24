@@ -26,6 +26,7 @@ import {
   type LeadFocus
 } from '../services/ai'
 import { useSessionHistory, useLastClimbingSession } from '../hooks/useSessionHistory'
+import { localDateStr } from '../services/date'
 import { sessionTypes } from '../data/exercises'
 import WorkoutPreview from './WorkoutPreview'
 import Modal from './ui/Modal'
@@ -100,7 +101,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
   const isClimbing = isClimbingDay(today)
   const suggestedClimbingType = getClimbingTypeForDay(today)
   const config = getScheduleConfig()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = localDateStr(today)
   const hasOverride = config.overrides.some(o => o.date === todayStr)
 
   // Check 24h hangboard rule

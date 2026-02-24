@@ -111,6 +111,7 @@ export default function WorkoutPreview({
   const [exerciseActuals, setExerciseActuals] = useState<Map<number, { weight?: number; reps: number[] }>>(new Map())
   const [showLogInput, setShowLogInput] = useState(false)
   const [showExerciseTimer, setShowExerciseTimer] = useState(false)
+  const [showSupersetWeight, setShowSupersetWeight] = useState<Set<number>>(new Set())
 
   const exerciseNames = useMemo(() => exercises.map(e => e.name), [exercises])
   const exerciseHistory = useExerciseHistoryBatch(exerciseNames)
@@ -547,19 +548,28 @@ export default function WorkoutPreview({
                       </button>
                     )}
                   </div>
-                  {/* Weight logging for superset exercises (non-climbing only) */}
+                  {/* Weight logging for superset exercises (non-climbing, tap to show) */}
                   {!isClimbingSession && ex.sets && (
-                    <div className="mt-2 flex items-center gap-2">
+                    showSupersetWeight.has(exIdx) ? (
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          onClick={() => updateActualWeight(exIdx, (actual.weight || 0) - 2.5)}
+                          className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold"
+                        >-</button>
+                        <span className="text-sm font-mono w-14 text-center">{actual.weight || 0}<span className="text-[10px] opacity-70">kg</span></span>
+                        <button
+                          onClick={() => updateActualWeight(exIdx, (actual.weight || 0) + 2.5)}
+                          className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold"
+                        >+</button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => updateActualWeight(exIdx, (actual.weight || 0) - 2.5)}
-                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold"
-                      >-</button>
-                      <span className="text-sm font-mono w-14 text-center">{actual.weight || 0}<span className="text-[10px] opacity-70">kg</span></span>
-                      <button
-                        onClick={() => updateActualWeight(exIdx, (actual.weight || 0) + 2.5)}
-                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold"
-                      >+</button>
-                    </div>
+                        onClick={() => setShowSupersetWeight(prev => new Set(prev).add(exIdx))}
+                        className="mt-1.5 text-[10px] uppercase tracking-wider text-white/40 hover:text-white/70 transition-colors"
+                      >
+                        + Log weight
+                      </button>
+                    )
                   )}
                   {/* Timer for timed superset exercises */}
                   {timerSecs && (

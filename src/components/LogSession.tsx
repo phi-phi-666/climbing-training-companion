@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { addSession, type Exercise } from '../hooks/useSessionHistory'
+import { localDateStr, todayStr } from '../services/date'
 import {
   sessionTypes,
   boulderSubTypes,
@@ -77,6 +78,7 @@ interface LogFormState {
   sessionRating: number | null
   perceivedExertion: number | null
   fatigueLevel: number | null
+  savedINeedMore: SavedINeedMoreState | null
   _savedAt: string  // ISO date to check freshness
 }
 
@@ -89,7 +91,7 @@ function loadFormState(): Partial<LogFormState> | null {
 
     // Check if saved today (don't restore stale state from previous days)
     const savedDate = parsed._savedAt?.split('T')[0]
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayStr()
     if (savedDate !== today) {
       localStorage.removeItem(LOG_FORM_STORAGE_KEY)
       return null
@@ -147,7 +149,7 @@ function getDateOptions(): { value: string; label: string }[] {
   for (let i = 0; i < 7; i++) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
-    const value = date.toISOString().split('T')[0]
+    const value = localDateStr(date)
 
     let label: string
     if (i === 0) {
@@ -174,7 +176,7 @@ export default function LogSession() {
   // Load saved state from localStorage
   const savedState = loadFormState()
 
-  const [sessionDate, setSessionDate] = useState(savedState?.sessionDate ?? new Date().toISOString().split('T')[0])
+  const [sessionDate, setSessionDate] = useState(savedState?.sessionDate ?? todayStr())
   const [sessionType, setSessionType] = useState<SessionType>(savedState?.sessionType ?? 'boulder')
   const [boulderSubType, setBoulderSubType] = useState<BoulderSubType>(savedState?.boulderSubType ?? 'problems')
   const [cardioSubType, setCardioSubType] = useState<CardioSubType>(savedState?.cardioSubType ?? 'run')
@@ -190,8 +192,8 @@ export default function LogSession() {
   const [sessionRating, setSessionRating] = useState<number | null>(savedState?.sessionRating ?? null)
   const [perceivedExertion, setPerceivedExertion] = useState<number | null>(savedState?.perceivedExertion ?? null)
   const [fatigueLevel, setFatigueLevel] = useState<number | null>(savedState?.fatigueLevel ?? null)
-  const [supplementary, setSupplementary] = useState<string | null>(null)
-  const [savedINeedMore, setSavedINeedMore] = useState<SavedINeedMoreState | null>(null)
+  const [supplementary, setSupplementary] = useState<string | null>(savedState?.savedINeedMore ? 'Workout Added' : null)
+  const [savedINeedMore, setSavedINeedMore] = useState<SavedINeedMoreState | null>(savedState?.savedINeedMore ?? null)
   const [saving, setSaving] = useState(false)
   const [showWarmup, setShowWarmup] = useState(false)
   const [showCooldown, setShowCooldown] = useState(false)
@@ -314,7 +316,8 @@ export default function LogSession() {
       cooldown,
       sessionRating,
       perceivedExertion,
-      fatigueLevel
+      fatigueLevel,
+      savedINeedMore
     })
   }, [
     sessionDate,
@@ -333,6 +336,7 @@ export default function LogSession() {
     sessionRating,
     perceivedExertion,
     fatigueLevel,
+    savedINeedMore,
     prefill
   ])
 

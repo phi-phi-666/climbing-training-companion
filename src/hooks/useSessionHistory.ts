@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Session, type Exercise } from '../services/db'
+import { localDateStr } from '../services/date'
 
 export function useSessionHistory(days: number = 7) {
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - days)
-  const cutoffDateStr = cutoffDate.toISOString().split('T')[0]
+  const cutoffDateStr = localDateStr(cutoffDate)
 
   const sessions = useLiveQuery(
     () =>
@@ -93,7 +94,7 @@ export async function getSessionById(id: number): Promise<Session | undefined> {
 }
 
 export function useHasSessionToday(): boolean {
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = localDateStr(new Date())
 
   const sessions = useLiveQuery(
     () => db.sessions.where('date').equals(todayStr).toArray(),

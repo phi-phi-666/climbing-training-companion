@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useSessionsByDateRange } from '../hooks/useSessionHistory'
 import { sessionTypes } from '../data/exercises'
+import { localDateStr } from '../services/date'
 import {
   Mountain,
   Dumbbell,
@@ -45,8 +46,8 @@ function getDateRange(period: Period): { start: string; end: string } {
     case '90d': start.setDate(start.getDate() - 90); break
   }
   return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0]
+    start: localDateStr(start),
+    end: localDateStr(end)
   }
 }
 
@@ -77,7 +78,7 @@ export default function StatsDashboard() {
     let streak = 0
     const checkDate = new Date(today)
     while (true) {
-      const dateStr = checkDate.toISOString().split('T')[0]
+      const dateStr = localDateStr(checkDate)
       if (sessionDates.has(dateStr)) {
         streak++
         checkDate.setDate(checkDate.getDate() - 1)
@@ -101,7 +102,7 @@ export default function StatsDashboard() {
       const d = new Date(today)
       const todayDay = (today.getDay() + 6) % 7  // Mon=0
       d.setDate(d.getDate() - todayDay + i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = localDateStr(d)
       const daySessions = sessions.filter(s => s.date === dateStr)
       // Find dominant session type for this day
       const dayTypeCounts: Record<string, number> = {}
@@ -123,7 +124,7 @@ export default function StatsDashboard() {
     for (let i = periodDays - 1; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = localDateStr(d)
       const count = sessions.filter(s => s.date === dateStr).length
       heatmap.push({ date: dateStr, count })
     }

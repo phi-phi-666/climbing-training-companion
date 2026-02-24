@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useActiveMesocycle, useAllMesocycles } from '../hooks/useMesocycle'
 import { useSessionHistory } from '../hooks/useSessionHistory'
+import { todayStr } from '../services/date'
 import {
   generateMesocycle,
   buildAIContext,
@@ -109,7 +110,7 @@ export default function MesocyclePlanner({ onClose }: MesocyclePlannerProps) {
   const handleSavePlan = async () => {
     if (!generatedPlan) return
 
-    const startDate = new Date().toISOString().split('T')[0]
+    const startDate = todayStr()
     await createMesocycle({
       name: generatedPlan.name,
       goal: selectedGoal,

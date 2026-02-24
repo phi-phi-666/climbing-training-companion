@@ -7,6 +7,7 @@ import {
   type DayOfWeek,
   type ClimbingType
 } from '../services/schedule'
+import { localDateStr } from '../services/date'
 import {
   Mountain,
   Calendar,
@@ -313,7 +314,7 @@ function WeekPreview({ config }: { config: ScheduleConfig }) {
     const dayOfWeek = i as DayOfWeek
     const climbingDay = config.climbingDays.find(d => d.dayOfWeek === dayOfWeek)
     const isToday = i === currentDayOfWeek
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = localDateStr(date)
     const override = config.overrides.find(o => o.date === dateStr)
 
     return {
