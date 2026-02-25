@@ -79,13 +79,36 @@ export default function INeedMoreGenerator({
     setError(null)
 
     try {
+      // Collect recent bonus exercise names to avoid repeats
+      const recentBonusExercises: string[] = []
+      // From previous sessions' notes (look for "Bonus Workout" sections)
+      for (const s of lastSessions) {
+        if (s.notes?.includes('Bonus Workout')) {
+          const lines = s.notes.split('\n')
+          for (const line of lines) {
+            // Exercise lines look like "Dips: 3×8-12" or "Dips [20kg x 8/8/10]"
+            const match = line.match(/^([A-Z][^:[\n]+?)(?:\s*[:\[])/i)
+            if (match && !match[1].includes('Bonus') && !match[1].includes('---')) {
+              recentBonusExercises.push(match[1].trim())
+            }
+          }
+        }
+      }
+      // From current session's already-generated I Need More
+      if (savedState?.result) {
+        for (const ex of savedState.result.exercises) {
+          recentBonusExercises.push(ex.name)
+        }
+      }
+
       const context = buildAIContext(lastSessions, null)
       const generated = await generateINeedMore(
         sessionType,
         context,
         selectedTypes,
         duration,
-        boulderSubType
+        boulderSubType,
+        recentBonusExercises.length > 0 ? recentBonusExercises : undefined
       )
       setResult(generated)
     } catch (err) {

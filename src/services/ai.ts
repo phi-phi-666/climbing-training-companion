@@ -64,7 +64,11 @@ function formatRecentSessions(sessions: Session[]): string {
           : ''
       const ratingInfo = s.sessionRating ? ` [${s.sessionRating}/5]` : ''
       const rpeInfo = s.perceivedExertion ? ` RPE:${s.perceivedExertion}` : ''
-      return `- ${s.date}: ${s.type}${subType} (${s.durationMinutes}min)${ratingInfo}${rpeInfo}${exercises}`
+      // Include notes (truncated) so AI sees bonus workout exercises from prior sessions
+      const notesSnippet = s.notes && s.notes.length > 0
+        ? ` | Notes: ${s.notes.slice(0, 200)}`
+        : ''
+      return `- ${s.date}: ${s.type}${subType} (${s.durationMinutes}min)${ratingInfo}${rpeInfo}${exercises}${notesSnippet}`
     })
     .join('\n')
 }
@@ -946,7 +950,8 @@ function buildINeedMorePrompt(
   context: AIContext,
   workoutTypes: WorkoutType[],
   durationMinutes: number,
-  boulderSubType?: string
+  boulderSubType?: string,
+  recentBonusExercises?: string[]
 ): string {
   const subTypeText = boulderSubType ? ` (${boulderSubType})` : ''
   const isClimbingSession = ['boulder', 'lead', 'hangboard'].includes(sessionType)
@@ -1000,8 +1005,10 @@ Today is ${context.currentDay}.
 EXERCISE POOLS TO SELECT FROM:
 ${exercisePools.join('\n')}
 
+${recentBonusExercises && recentBonusExercises.length > 0 ? `\nAVOID THESE EXERCISES (already done recently):\n${recentBonusExercises.join(', ')}\nPick DIFFERENT exercises from the pools above to provide variety.\n` : ''}
 Requirements:
 - Create a ${durationMinutes}-minute workout
+- VARIETY IS KEY: Check the recent sessions above and avoid repeating the same supplementary/bonus exercises from the last few days
 - Select ${Math.floor(durationMinutes / 5)}-${Math.floor(durationMinutes / 3)} exercises (adjust for duration)
 - Include sets and reps for each exercise
 - For ${durationMinutes <= 15 ? 'short sessions: 2-4 exercises, keep rest minimal' : durationMinutes <= 30 ? 'medium sessions: 4-6 exercises, moderate rest' : 'longer sessions: 6-8 exercises, can include supersets'}
@@ -1033,9 +1040,10 @@ export async function generateINeedMore(
   context: AIContext,
   workoutTypes: WorkoutType[],
   durationMinutes: number,
-  boulderSubType?: string
+  boulderSubType?: string,
+  recentBonusExercises?: string[]
 ): Promise<INeedMoreResult> {
-  const prompt = buildINeedMorePrompt(sessionType, context, workoutTypes, durationMinutes, boulderSubType)
+  const prompt = buildINeedMorePrompt(sessionType, context, workoutTypes, durationMinutes, boulderSubType, recentBonusExercises)
   const response = await callOpenRouter(prompt, { json: true })
   const cleanedResponse = stripMarkdownCodeBlock(response)
 
