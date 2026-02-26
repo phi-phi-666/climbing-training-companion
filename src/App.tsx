@@ -4,9 +4,10 @@ import LogSession from './components/LogSession'
 import History from './components/History'
 import Exercises from './components/Exercises'
 import Settings from './components/Settings'
+import TrainingPlanPage from './components/TrainingPlanPage'
 import { ToastProvider } from './components/ui/Toast'
 import ErrorBoundary from './components/ui/ErrorBoundary'
-import { Home, Plus, Calendar, BookOpen, Settings as SettingsIcon } from 'lucide-react'
+import { Home, Plus, Calendar, CalendarRange, Settings as SettingsIcon } from 'lucide-react'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/log" element={<LogSession />} />
+                <Route path="/plan" element={<TrainingPlanPage />} />
                 <Route path="/exercises" element={<Exercises />} />
                 <Route path="/history" element={<History />} />
                 <Route path="/settings" element={<Settings />} />
@@ -53,7 +55,7 @@ function App() {
               <span className="text-xs tracking-wide">Log</span>
             </NavLink>
             <NavLink
-              to="/exercises"
+              to="/plan"
               className={({ isActive }) =>
                 `flex flex-col items-center py-3 px-4 text-sm font-medium transition-all ${
                   isActive
@@ -62,8 +64,8 @@ function App() {
                 }`
               }
             >
-              <BookOpen size={22} strokeWidth={1.5} className="mb-1" />
-              <span className="text-xs tracking-wide">Exercises</span>
+              <CalendarRange size={22} strokeWidth={1.5} className="mb-1" />
+              <span className="text-xs tracking-wide">Plan</span>
             </NavLink>
             <NavLink
               to="/history"

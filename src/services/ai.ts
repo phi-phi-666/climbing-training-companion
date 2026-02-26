@@ -951,7 +951,8 @@ function buildINeedMorePrompt(
   workoutTypes: WorkoutType[],
   durationMinutes: number,
   boulderSubType?: string,
-  recentBonusExercises?: string[]
+  recentBonusExercises?: string[],
+  useSupersets: boolean = true
 ): string {
   const subTypeText = boulderSubType ? ` (${boulderSubType})` : ''
   const isClimbingSession = ['boulder', 'lead', 'hangboard'].includes(sessionType)
@@ -1017,7 +1018,7 @@ Requirements:
 - Description should explain the benefit in one sentence
 - List which muscle groups are targeted
 
-SUPERSET GROUPING: You can group 2 exercises as supersets using "supersetGroup" (same number = same superset). Use for antagonist pairs or compound sets.
+${useSupersets ? 'SUPERSET GROUPING: Group 2 exercises as supersets using "supersetGroup" (same number = same superset). Use for antagonist pairs or compound sets.' : 'STRAIGHT SETS ONLY: Do NOT use supersetGroup. Each exercise should be performed individually with rest between sets. No supersets.'}
 
 Return as JSON:
 {
@@ -1041,9 +1042,10 @@ export async function generateINeedMore(
   workoutTypes: WorkoutType[],
   durationMinutes: number,
   boulderSubType?: string,
-  recentBonusExercises?: string[]
+  recentBonusExercises?: string[],
+  useSupersets: boolean = true
 ): Promise<INeedMoreResult> {
-  const prompt = buildINeedMorePrompt(sessionType, context, workoutTypes, durationMinutes, boulderSubType, recentBonusExercises)
+  const prompt = buildINeedMorePrompt(sessionType, context, workoutTypes, durationMinutes, boulderSubType, recentBonusExercises, useSupersets)
   const response = await callOpenRouter(prompt, { json: true })
   const cleanedResponse = stripMarkdownCodeBlock(response)
 

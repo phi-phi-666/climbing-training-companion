@@ -1,12 +1,10 @@
-import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useRecentSessions, useDaysSinceLastSession, useHasSessionToday } from '../hooks/useSessionHistory'
 import { useActiveMesocycle } from '../hooks/useMesocycle'
 import { sessionTypes, boulderSubTypes, cardioSubTypes } from '../data/exercises'
-import Modal from './ui/Modal'
 import Accordion from './ui/Accordion'
 import SmartSchedule from './SmartSchedule'
 import StatsDashboard from './StatsDashboard'
-import MesocyclePlanner from './MesocyclePlanner'
 import type { Session } from '../services/db'
 import {
   Mountain,
@@ -37,9 +35,9 @@ const sessionIcons: Record<string, LucideIcon> = {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const recentSessions = useRecentSessions(5)
   const hasSessionToday = useHasSessionToday()
-  const [showMesocyclePlanner, setShowMesocyclePlanner] = useState(false)
   const activeMesocycle = useActiveMesocycle()
 
   // Get display label for session including boulder/cardio sub-type
@@ -73,7 +71,7 @@ export default function Dashboard() {
       {/* Active Mesocycle Card */}
       {activeMesocycle && (
         <button
-          onClick={() => setShowMesocyclePlanner(true)}
+          onClick={() => navigate('/plan')}
           className="w-full bg-gradient-to-r from-rose-900/40 to-violet-900/40 border border-rose-500/20 rounded-xl p-4 text-left hover:from-rose-900/50 hover:to-violet-900/50 transition-all"
         >
           <div className="flex items-center justify-between mb-2">
@@ -141,16 +139,6 @@ export default function Dashboard() {
         </div>
       </Accordion>
 
-      {/* Training Plan - Accordion */}
-      <Accordion
-        title="TRAINING PLAN"
-        icon={<CalendarRange size={18} />}
-        badge={activeMesocycle ? `W${activeMesocycle.currentWeek}` : undefined}
-        defaultOpen={false}
-      >
-        <MesocyclePlanner onClose={() => {}} />
-      </Accordion>
-
       {/* Recent Sessions - Accordion */}
       <Accordion
         title="RECENT"
@@ -183,13 +171,6 @@ export default function Dashboard() {
         )}
       </Accordion>
 
-      <Modal
-        isOpen={showMesocyclePlanner}
-        onClose={() => setShowMesocyclePlanner(false)}
-        title="Training Plan"
-      >
-        <MesocyclePlanner onClose={() => setShowMesocyclePlanner(false)} />
-      </Modal>
     </div>
   )
 }

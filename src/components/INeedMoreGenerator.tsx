@@ -11,6 +11,7 @@ export interface SavedINeedMoreState {
   result: INeedMoreResult
   selectedTypes: WorkoutType[]
   duration: Duration
+  useSupersets: boolean
 }
 
 interface INeedMoreGeneratorProps {
@@ -49,6 +50,7 @@ export default function INeedMoreGenerator({
   })
 
   const [duration, setDuration] = useState<Duration>(savedState?.duration ?? 15)
+  const [useSupersets, setUseSupersets] = useState(savedState?.useSupersets ?? true)
   const [result, setResult] = useState<INeedMoreResult | null>(savedState?.result ?? null)
   const [showPreview, setShowPreview] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -57,9 +59,9 @@ export default function INeedMoreGenerator({
   // Persist state changes to parent
   useEffect(() => {
     if (result) {
-      onStateChange?.({ result, selectedTypes, duration })
+      onStateChange?.({ result, selectedTypes, duration, useSupersets })
     }
-  }, [result, selectedTypes, duration])
+  }, [result, selectedTypes, duration, useSupersets])
 
   // Check if this is a climbing session (for supplementary warning)
   const isClimbingSession = sessionType === 'boulder' || sessionType === 'lead' || sessionType === 'hangboard'
@@ -108,7 +110,8 @@ export default function INeedMoreGenerator({
         selectedTypes,
         duration,
         boulderSubType,
-        recentBonusExercises.length > 0 ? recentBonusExercises : undefined
+        recentBonusExercises.length > 0 ? recentBonusExercises : undefined,
+        useSupersets
       )
       setResult(generated)
     } catch (err) {
@@ -204,6 +207,33 @@ export default function INeedMoreGenerator({
                   {dur} min
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Superset preference */}
+          <div>
+            <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Format</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setUseSupersets(true)}
+                className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                  useSupersets
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                }`}
+              >
+                Supersets
+              </button>
+              <button
+                onClick={() => setUseSupersets(false)}
+                className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+                  !useSupersets
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-void-100 text-zinc-400 hover:text-zinc-200 border border-violet-900/20'
+                }`}
+              >
+                Straight sets
+              </button>
             </div>
           </div>
 

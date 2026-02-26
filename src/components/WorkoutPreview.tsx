@@ -438,8 +438,8 @@ export default function WorkoutPreview({
               </button>
             )
           })()}
-          {/* Log weight/reps toggle - only for non-climbing sessions */}
-          {!isClimbingSession && (
+          {/* Log weight/reps toggle - only for non-climbing, non-timed exercises */}
+          {!isClimbingSession && !parseDurationToSeconds(currentBlock.exercises[0]?.reps) && (
             <>
               <button
                 onClick={() => setShowLogInput(!showLogInput)}
@@ -518,6 +518,7 @@ export default function WorkoutPreview({
               const exIdx = currentBlock.originalIndices[i]
               const actual = exerciseActuals.get(exIdx) || { reps: [] }
               const timerSecs = parseDurationToSeconds(ex.reps)
+              const hist = !isClimbingSession ? exerciseHistory.get(ex.name) : undefined
               return (
                 <div key={i} className="bg-black/15 rounded-xl p-3">
                   <div className="flex items-center justify-between">
@@ -532,6 +533,14 @@ export default function WorkoutPreview({
                       {(ex.sets || ex.reps) && (
                         <div className="text-xs font-mono opacity-80 mt-0.5">
                           {ex.sets && `${ex.sets}×`}{ex.reps || ''}
+                          {hist ? (
+                            <span className="ml-2 font-sans opacity-60">
+                              {hist.daysAgo === 0 ? 'today' : `${hist.daysAgo}d ago`}
+                              {hist.lastWeight ? ` @ ${hist.lastWeight}kg` : ''}
+                            </span>
+                          ) : !isClimbingSession ? (
+                            <span className="ml-2 font-sans opacity-50">new</span>
+                          ) : null}
                         </div>
                       )}
                       {ex.description && (
@@ -548,8 +557,8 @@ export default function WorkoutPreview({
                       </button>
                     )}
                   </div>
-                  {/* Weight logging for superset exercises (non-climbing, tap to show) */}
-                  {!isClimbingSession && ex.sets && (
+                  {/* Weight logging for superset exercises (non-climbing, non-timed, tap to show) */}
+                  {!isClimbingSession && ex.sets && !timerSecs && (
                     showSupersetWeight.has(exIdx) ? (
                       <div className="mt-2 flex items-center gap-2">
                         <button
