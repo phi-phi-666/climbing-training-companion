@@ -99,6 +99,8 @@ interface SavedWorkoutProgress {
   exerciseActuals: [number, { weight?: number; reps: number[] }][]
   showSupersetWeight: number[]
   exercises: Exercise[]
+  showWarmupDetail?: boolean
+  showCooldownDetail?: boolean
 }
 
 function workoutFingerprint(exercises: Exercise[]): string {
@@ -131,8 +133,8 @@ export default function WorkoutPreview({
   const [exercises, setExercises] = useState(savedProgress?.exercises ?? initialExercises)
   const [currentBlockIndex, setCurrentBlockIndex] = useState(savedProgress?.currentBlockIndex ?? 0)
   const [completedBlocks, setCompletedBlocks] = useState<Set<number>>(new Set(savedProgress?.completedBlocks ?? []))
-  const [showWarmupDetail, setShowWarmupDetail] = useState(false)
-  const [showCooldownDetail, setShowCooldownDetail] = useState(false)
+  const [showWarmupDetail, setShowWarmupDetail] = useState(savedProgress?.showWarmupDetail ?? false)
+  const [showCooldownDetail, setShowCooldownDetail] = useState(savedProgress?.showCooldownDetail ?? false)
   const [swappingIndex, setSwappingIndex] = useState<number | null>(null)
   const [activeTimer, setActiveTimer] = useState<'warmup' | 'cooldown' | null>(null)
   const [exerciseActuals, setExerciseActuals] = useState<Map<number, { weight?: number; reps: number[] }>>(new Map(savedProgress?.exerciseActuals ?? []))
@@ -148,10 +150,12 @@ export default function WorkoutPreview({
       completedBlocks: [...completedBlocks],
       exerciseActuals: [...exerciseActuals.entries()],
       showSupersetWeight: [...showSupersetWeight],
-      exercises
+      exercises,
+      showWarmupDetail,
+      showCooldownDetail
     }
     localStorage.setItem(WORKOUT_PROGRESS_KEY, JSON.stringify(progress))
-  }, [currentBlockIndex, completedBlocks, exerciseActuals, showSupersetWeight, exercises])
+  }, [currentBlockIndex, completedBlocks, exerciseActuals, showSupersetWeight, exercises, showWarmupDetail, showCooldownDetail])
 
   const exerciseNames = useMemo(() => exercises.map(e => e.name), [exercises])
   const exerciseHistory = useExerciseHistoryBatch(exerciseNames)

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   getScheduleConfig,
   saveScheduleConfig,
@@ -16,12 +17,14 @@ import {
   X,
   Check,
   ChevronRight,
+  Clock,
   Settings as SettingsIcon
 } from 'lucide-react'
 
 const DAYS: DayOfWeek[] = [0, 1, 2, 3, 4, 5, 6]
 
 export default function Settings() {
+  const navigate = useNavigate()
   const [config, setConfig] = useState<ScheduleConfig>(getScheduleConfig)
   const [editingEquipment, setEditingEquipment] = useState(false)
   const [newEquipment, setNewEquipment] = useState('')
@@ -121,6 +124,21 @@ export default function Settings() {
           </span>
         )}
       </div>
+
+      {/* Session History */}
+      <button
+        onClick={() => navigate('/history')}
+        className="w-full p-4 bg-void-100 hover:bg-void-50 rounded-xl flex items-center justify-between border border-violet-900/20 transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <Clock size={20} className="text-rose-400" />
+          <div className="text-left">
+            <div className="font-semibold text-sm">Session History</div>
+            <div className="text-[10px] text-zinc-500">View all past sessions</div>
+          </div>
+        </div>
+        <ChevronRight size={18} className="text-zinc-600" />
+      </button>
 
       {/* Weekly Schedule */}
       <div className="card">

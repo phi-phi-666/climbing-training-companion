@@ -7,7 +7,7 @@ import Settings from './components/Settings'
 import TrainingPlanPage from './components/TrainingPlanPage'
 import { ToastProvider } from './components/ui/Toast'
 import ErrorBoundary from './components/ui/ErrorBoundary'
-import { Home, Plus, Calendar, CalendarRange, Settings as SettingsIcon } from 'lucide-react'
+import { Home, Plus, BookOpen, CalendarRange, Settings as SettingsIcon } from 'lucide-react'
 
 function App() {
   return (
@@ -68,7 +68,7 @@ function App() {
               <span className="text-xs tracking-wide">Plan</span>
             </NavLink>
             <NavLink
-              to="/history"
+              to="/exercises"
               className={({ isActive }) =>
                 `flex flex-col items-center py-3 px-4 text-sm font-medium transition-all ${
                   isActive
@@ -77,8 +77,8 @@ function App() {
                 }`
               }
             >
-              <Calendar size={22} strokeWidth={1.5} className="mb-1" />
-              <span className="text-xs tracking-wide">History</span>
+              <BookOpen size={22} strokeWidth={1.5} className="mb-1" />
+              <span className="text-xs tracking-wide">Exercises</span>
             </NavLink>
             <NavLink
               to="/settings"
