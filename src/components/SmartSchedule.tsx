@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   isClimbingDay,
@@ -82,6 +82,7 @@ interface SmartScheduleProps {
 }
 
 const STORAGE_KEY = 'alpha_smart_schedule_state'
+const PREVIEW_STORAGE_KEY = 'alpha_smart_preview_state'
 
 type ViewState =
   | { type: 'initial' }
@@ -125,15 +126,29 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
     return { type: 'initial' }
   })
 
+  // Restore preview state from localStorage
+  const savedPreview = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(PREVIEW_STORAGE_KEY)
+      if (!raw) return null
+      return JSON.parse(raw) as {
+        previewOption: TodayOption | null
+        previewClimbingSession: ClimbingSession | null
+        generatedWarmup: string | null
+        generatedCooldown: string | null
+      }
+    } catch { return null }
+  }, [])
+
   const [error, setError] = useState<string | null>(null)
-  const [showPreview, setShowPreview] = useState(false)
-  const [previewOption, setPreviewOption] = useState<TodayOption | null>(null)
-  const [previewClimbingSession, setPreviewClimbingSession] = useState<ClimbingSession | null>(null)
-  const [generatedWarmup, setGeneratedWarmup] = useState<string | null>(null)
-  const [generatedCooldown, setGeneratedCooldown] = useState<string | null>(null)
+  const [showPreview, setShowPreview] = useState(!!savedPreview)
+  const [previewOption, setPreviewOption] = useState<TodayOption | null>(savedPreview?.previewOption ?? null)
+  const [previewClimbingSession, setPreviewClimbingSession] = useState<ClimbingSession | null>(savedPreview?.previewClimbingSession ?? null)
+  const [generatedWarmup, setGeneratedWarmup] = useState<string | null>(savedPreview?.generatedWarmup ?? null)
+  const [generatedCooldown, setGeneratedCooldown] = useState<string | null>(savedPreview?.generatedCooldown ?? null)
   const [generatingWarmupCooldown, setGeneratingWarmupCooldown] = useState(false)
 
-  // Persist state
+  // Persist view state
   useEffect(() => {
     if (viewState.type !== 'initial') {
       const toStore = { ...viewState, _storedDate: todayStr }
@@ -142,6 +157,20 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
       localStorage.removeItem(STORAGE_KEY)
     }
   }, [viewState, todayStr])
+
+  // Persist preview state
+  useEffect(() => {
+    if (showPreview && (previewOption || previewClimbingSession)) {
+      localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify({
+        previewOption,
+        previewClimbingSession,
+        generatedWarmup,
+        generatedCooldown
+      }))
+    } else if (!showPreview) {
+      localStorage.removeItem(PREVIEW_STORAGE_KEY)
+    }
+  }, [showPreview, previewOption, previewClimbingSession, generatedWarmup, generatedCooldown])
 
   const handleClimbingTypeSelect = (type: ClimbingType) => {
     // Go to focus picker instead of directly generating
@@ -295,6 +324,7 @@ export default function SmartSchedule({ hasSessionToday }: SmartScheduleProps) {
   const handlePreviewComplete = (notesText: string) => {
     // Reset SmartSchedule state so it shows "Already Trained" on return
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(PREVIEW_STORAGE_KEY)
 
     if (previewOption) {
       navigate('/log', {

@@ -12,6 +12,7 @@ export interface SavedINeedMoreState {
   selectedTypes: WorkoutType[]
   duration: Duration
   useSupersets: boolean
+  showPreview?: boolean
 }
 
 interface INeedMoreGeneratorProps {
@@ -52,16 +53,16 @@ export default function INeedMoreGenerator({
   const [duration, setDuration] = useState<Duration>(savedState?.duration ?? 15)
   const [useSupersets, setUseSupersets] = useState(savedState?.useSupersets ?? true)
   const [result, setResult] = useState<INeedMoreResult | null>(savedState?.result ?? null)
-  const [showPreview, setShowPreview] = useState(false)
+  const [showPreview, setShowPreview] = useState(savedState?.showPreview ?? false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Persist state changes to parent
   useEffect(() => {
     if (result) {
-      onStateChange?.({ result, selectedTypes, duration, useSupersets })
+      onStateChange?.({ result, selectedTypes, duration, useSupersets, showPreview })
     }
-  }, [result, selectedTypes, duration, useSupersets])
+  }, [result, selectedTypes, duration, useSupersets, showPreview])
 
   // Check if this is a climbing session (for supplementary warning)
   const isClimbingSession = sessionType === 'boulder' || sessionType === 'lead' || sessionType === 'hangboard'

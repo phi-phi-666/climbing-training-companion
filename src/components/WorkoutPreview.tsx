@@ -90,6 +90,31 @@ function ExerciseTimer({ totalSeconds }: { totalSeconds: number }) {
   )
 }
 
+const WORKOUT_PROGRESS_KEY = 'alpha_workout_progress'
+
+interface SavedWorkoutProgress {
+  fingerprint: string
+  currentBlockIndex: number
+  completedBlocks: number[]
+  exerciseActuals: [number, { weight?: number; reps: number[] }][]
+  showSupersetWeight: number[]
+  exercises: Exercise[]
+}
+
+function workoutFingerprint(exercises: Exercise[]): string {
+  return exercises.map(e => e.name).join('|')
+}
+
+function loadWorkoutProgress(exercises: Exercise[]): SavedWorkoutProgress | null {
+  try {
+    const raw = localStorage.getItem(WORKOUT_PROGRESS_KEY)
+    if (!raw) return null
+    const saved: SavedWorkoutProgress = JSON.parse(raw)
+    if (saved.fingerprint !== workoutFingerprint(exercises)) return null
+    return saved
+  } catch { return null }
+}
+
 export default function WorkoutPreview({
   description,
   exercises: initialExercises,
@@ -101,17 +126,32 @@ export default function WorkoutPreview({
   onSwapExercise,
   isClimbingSession
 }: WorkoutPreviewProps) {
-  const [exercises, setExercises] = useState(initialExercises)
-  const [currentBlockIndex, setCurrentBlockIndex] = useState(0)
-  const [completedBlocks, setCompletedBlocks] = useState<Set<number>>(new Set())
+  const savedProgress = useMemo(() => loadWorkoutProgress(initialExercises), [])
+
+  const [exercises, setExercises] = useState(savedProgress?.exercises ?? initialExercises)
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(savedProgress?.currentBlockIndex ?? 0)
+  const [completedBlocks, setCompletedBlocks] = useState<Set<number>>(new Set(savedProgress?.completedBlocks ?? []))
   const [showWarmupDetail, setShowWarmupDetail] = useState(false)
   const [showCooldownDetail, setShowCooldownDetail] = useState(false)
   const [swappingIndex, setSwappingIndex] = useState<number | null>(null)
   const [activeTimer, setActiveTimer] = useState<'warmup' | 'cooldown' | null>(null)
-  const [exerciseActuals, setExerciseActuals] = useState<Map<number, { weight?: number; reps: number[] }>>(new Map())
+  const [exerciseActuals, setExerciseActuals] = useState<Map<number, { weight?: number; reps: number[] }>>(new Map(savedProgress?.exerciseActuals ?? []))
   const [showLogInput, setShowLogInput] = useState(false)
   const [showExerciseTimer, setShowExerciseTimer] = useState(false)
-  const [showSupersetWeight, setShowSupersetWeight] = useState<Set<number>>(new Set())
+  const [showSupersetWeight, setShowSupersetWeight] = useState<Set<number>>(new Set(savedProgress?.showSupersetWeight ?? []))
+
+  // Persist workout progress to localStorage
+  useEffect(() => {
+    const progress: SavedWorkoutProgress = {
+      fingerprint: workoutFingerprint(initialExercises),
+      currentBlockIndex,
+      completedBlocks: [...completedBlocks],
+      exerciseActuals: [...exerciseActuals.entries()],
+      showSupersetWeight: [...showSupersetWeight],
+      exercises
+    }
+    localStorage.setItem(WORKOUT_PROGRESS_KEY, JSON.stringify(progress))
+  }, [currentBlockIndex, completedBlocks, exerciseActuals, showSupersetWeight, exercises])
 
   const exerciseNames = useMemo(() => exercises.map(e => e.name), [exercises])
   const exerciseHistory = useExerciseHistoryBatch(exerciseNames)
@@ -173,6 +213,7 @@ export default function WorkoutPreview({
   }
 
   const handleDone = () => {
+    localStorage.removeItem(WORKOUT_PROGRESS_KEY)
     // Build notes text from exercises with actuals
     const notesText = exercises
       .map((ex, i) => {
@@ -195,6 +236,11 @@ export default function WorkoutPreview({
       .join('\n')
 
     onComplete(notesText)
+  }
+
+  const handleClose = () => {
+    localStorage.removeItem(WORKOUT_PROGRESS_KEY)
+    onClose()
   }
 
   const updateActualWeight = (exIndex: number, weight: number) => {
@@ -245,7 +291,7 @@ export default function WorkoutPreview({
     return (
       <div className="text-center py-8">
         <p className="text-zinc-400 mb-4">No exercises to display</p>
-        <button onClick={onClose} className="btn-secondary">
+        <button onClick={handleClose} className="btn-secondary">
           Close
         </button>
       </div>
@@ -676,7 +722,7 @@ export default function WorkoutPreview({
           <span className="text-sm">Restart</span>
         </button>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="flex-1 btn-secondary py-2.5 text-sm"
         >
           Close
